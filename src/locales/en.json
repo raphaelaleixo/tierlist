@@ -1,0 +1,13 @@
+{
+  "home": {
+    "title": "Tierlist",
+    "subtitle": "A party game of tiering things you love (and hate).",
+    "newGame": "New Game",
+    "resumeGame": "Resume Game",
+    "howToPlay": "How to Play"
+  },
+  "howToPlay": {
+    "title": "How to Play",
+    "back": "Back"
+  }
+}
