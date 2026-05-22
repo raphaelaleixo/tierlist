@@ -9,5 +9,35 @@
   "howToPlay": {
     "title": "How to Play",
     "back": "Back"
+  },
+  "lobby": {
+    "scanHint": "Scan to join, or visit this room code on your phone.",
+    "playerCount": "{{count}} / {{max}} players  ·  min {{min}}",
+    "start": "Start Game",
+    "waitingForPlayers": "Waiting for the host to start…",
+    "roomNotFound": "Room not found",
+    "roomNotFoundSubtitle": "Double-check the code and try again.",
+    "backHome": "Back to home",
+    "empty": "Empty slot",
+    "joining": "Joining…",
+    "ready": "Ready",
+    "lobbyFull": "Lobby is full"
+  },
+  "join": {
+    "title": "Join room {{id}}",
+    "namePlaceholder": "Your name",
+    "nameLabel": "Player name",
+    "pickColor": "Pick your colour",
+    "colorTaken": "Taken",
+    "submit": "Join",
+    "submitting": "Joining…",
+    "alreadyStartedTitle": "Game already started",
+    "alreadyStartedSubtitle": "Look at the big screen.",
+    "roomFull": "This room is full."
+  },
+  "player": {
+    "ready": "READY",
+    "waiting": "Waiting for others…",
+    "startedPlaceholder": "Game on. Look at the big screen."
   }
 }

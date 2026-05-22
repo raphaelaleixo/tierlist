@@ -29,7 +29,12 @@ const routes: RouteObject[] = [
 
 if (import.meta.env.DEV) {
   const MockBigScreen = lazy(() => import("./pages/MockBigScreen"));
+  const MockPlayerPhone = lazy(() => import("./pages/MockPlayerPhone"));
+  const MockCardStyle = lazy(() => import("./pages/MockCardStyle"));
   routes.push({ path: "/mock/big-screen/:id", element: <MockBigScreen /> });
+  routes.push({ path: "/mock/phone/:id/:playerId", element: <MockPlayerPhone /> });
+  routes.push({ path: "/mock/phone", element: <MockPlayerPhone /> });
+  routes.push({ path: "/mock/card-style", element: <MockCardStyle /> });
 }
 
 routes.push({ path: "*", element: <Navigate to="/" replace /> });
