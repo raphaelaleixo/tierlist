@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { Box, Typography } from '@mui/material';
 import type { Play, Round } from '../../game/types';
 import { writerOf } from '../../game/lifecycle';
 import TierCard from '../TierCard';
 import OpenMojiIcon from '../OpenMojiIcon';
 import { pastelOnDark } from '../../utils/blob';
+import PlayerSlot, { PlayerNameLine } from './PlayerSlot';
 import type { PlayerMeta } from './playerMeta';
 
 // Keep in sync with the `tierCardDropIn` keyframe duration in TierCard.
@@ -73,12 +74,25 @@ export default function PlayerCell({
   const spotlight = winnerSpotlight && isWinnerOfTrick;
   void hasPlayedCurrentTrick;
 
+  // Fade in the "{writer}'s {category}" subtitle alongside the bottom slot
+  // (handled by PlayerSlot itself), so the whole cell composes nicely.
+  const [subtitleVisible, setSubtitleVisible] = useState(false);
+  useEffect(() => {
+    const t = window.setTimeout(() => setSubtitleVisible(true), 30);
+    return () => clearTimeout(t);
+  }, []);
+
   // Keep the "thinking…/waiting" placeholder visible until the dropping
   // card has finished its slide. We mark the entry animation as "in flight"
   // when a play first appears for this cell, then clear it after the slide.
+  //
+  // `useLayoutEffect` (not `useEffect`) so the `cardLanded → false` flip
+  // happens BEFORE the browser paints the render that first sees the new
+  // currentPlay. Otherwise there's a one-frame gap where the placeholder
+  // is gone but the card has only just started sliding from the top.
   const [cardLanded, setCardLanded] = useState(true);
   const lastPlayIdRef = useRef<string | null>(null);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const newId = currentPlay?.cardId ?? null;
     if (newId === lastPlayIdRef.current) return;
     lastPlayIdRef.current = newId;
@@ -92,54 +106,27 @@ export default function PlayerCell({
     return () => clearTimeout(t);
   }, [currentPlay?.cardId]);
 
-  return (
-    <Box
-      sx={{
-        // Width is set by the parent row (child selector pins each child to
-        // 1/6 of the row). Height fills the row.
-        minWidth: 0,
-        height: '100%',
-        minHeight: 0,
-        display: 'grid',
-        // Top and bottom rows are equal (1fr each); card sits in the auto
-        // middle row, so its centre is always the cell's centre regardless
-        // of how many lines the name block uses. Explicit single column so
-        // the card width follows the cell width (otherwise the grid track
-        // auto-sizes to the smallest content and the card collapses).
-        gridTemplateRows: '1fr auto 1fr',
-        gridTemplateColumns: '1fr',
-        justifyItems: 'center',
-        gap: '2cqi',
-        fontFamily: CARD_FONT,
-        py: '2cqi',
-        px: '1.5cqi',
-        background: `linear-gradient(to bottom, ${pastelOnDark(meta.colorHex, 0.35)} 0%, ${pastelOnDark(meta.colorHex, 0.18)} 100%)`,
-        containerType: 'inline-size',
-        position: 'relative',
-      }}
-    >
-      {/* Top: "{player}'s {category}". Pinned to the top of its 1fr row so
-          the row's bottom edge stays at a fixed midpoint (keeping card centred). */}
+  const topSlot = (
+    <Box sx={{ textAlign: 'center', lineHeight: 1.1, textTransform: 'uppercase' }}>
+      <PlayerNameLine name={meta.name} />
       <Box
         sx={{
-          alignSelf: 'start',
-          textAlign: 'center',
+          fontWeight: 700,
+          fontSize: '8cqi',
+          color: meta.colorHex,
+          mt: '1.5cqi',
           fontFamily: CARD_FONT,
-          fontWeight: 800,
-          fontSize: '11cqi',
-          lineHeight: 1.1,
-          color: 'text.primary',
+          opacity: subtitleVisible ? 1 : 0,
+          transition: 'opacity 500ms ease',
         }}
       >
-        <Box>{meta.name}'s</Box>
-        <Box>{category?.name ?? ''}</Box>
+        {writer?.name ?? ''}'s {category?.name ?? ''}
       </Box>
+    </Box>
+  );
 
-      {/* Middle: card area. Sized by cell width with 5/7 aspect ratio so it
-          stays inside the narrow cell. Dismiss animation runs here so only
-          the card moves — the cell tint, name, and points stay in place.
-          `position:relative` lets us raise the winner card with z-index. */}
-      <Box
+  const middleSlot = (
+    <Box
         style={{
           // dx: horizontal travel toward the winner cell, in vw (cells are
           // 1/6 of viewport). Other cqi-based offsets won't carry across
@@ -208,6 +195,7 @@ export default function PlayerCell({
                 '--rot-start': `${cardRotation + 180}deg`,
                 '--rot-end': `${cardRotation}deg`,
                 '--rot-nudge-neg': `${-cardRotation}deg`,
+                '--rot-spin-end': `${cardRotation + 360}deg`,
               } as CSSProperties}
               sx={{
                 width: '100%',
@@ -215,9 +203,11 @@ export default function PlayerCell({
                 transformOrigin: 'center center',
                 // Base resting state — used when neither animation is running.
                 transform: 'rotate(var(--rot-end))',
-                animation: spotlight
-                  ? 'winnerNudge 700ms ease-in-out infinite alternate'
-                  : `cardEntryRotate ${DROP_IN_MS}ms cubic-bezier(0.22, 1, 0.36, 1) both`,
+                animation: (dismissing && cellIndex === winnerIndex)
+                  ? `cardDismissSpin ${dismissDurations.tuck}ms cubic-bezier(0.4, 0, 0.2, 1) forwards`
+                  : spotlight
+                    ? 'winnerNudge 700ms ease-in-out infinite alternate'
+                    : `cardEntryRotate ${DROP_IN_MS}ms cubic-bezier(0.22, 1, 0.36, 1) both`,
                 '@keyframes cardEntryRotate': {
                   '0%': { transform: 'rotate(var(--rot-start))' },
                   '100%': { transform: 'rotate(var(--rot-end))' },
@@ -228,6 +218,14 @@ export default function PlayerCell({
                 '@keyframes winnerNudge': {
                   '0%': { transform: 'rotate(var(--rot-end))' },
                   '100%': { transform: 'rotate(var(--rot-nudge-neg))' },
+                },
+                // Full 360° spin on dismiss — runs only on the WINNER card
+                // during the tuck phase, so it looks like a deliberate beat
+                // every time (instead of the accidental spin we'd get when
+                // swapping the nudge keyframe for the entry one).
+                '@keyframes cardDismissSpin': {
+                  '0%':   { transform: 'rotate(var(--rot-end))' },
+                  '100%': { transform: 'rotate(var(--rot-spin-end))' },
                 },
               }}
             >
@@ -247,92 +245,136 @@ export default function PlayerCell({
           </Box>
         )}
       </Box>
+  );
 
-      {/* Bottom: points as "🔥 ×N", or "no points" when zero. Fixed-height
-          slot so the "no points" state visually aligns with the populated one. */}
-      <Box
-        sx={{
-          alignSelf: 'end',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: '22cqi',
-          gap: 0,
-          fontFamily: CARD_FONT,
-          fontWeight: 800,
-          color: 'text.primary',
-          lineHeight: 1,
-        }}
-      >
-        {points > 0 ? (
-          <>
-            <OpenMojiIcon emoji="🔥" variant="color" size="22cqi" />
-            <Box
-              component="span"
-              sx={{
-                display: 'inline-flex',
-                alignItems: 'baseline',
-                gap: '5cqi',
-                textBoxTrim: 'trim-both',
-                textBoxEdge: 'cap alphabetic',
-              }}
-            >
-              <Box component="span" sx={{ fontSize: '11cqi', fontWeight: 600, opacity: 0.7 }}>×</Box>
-              <Box component="span" sx={{ fontSize: '18cqi' }}>{points}</Box>
-            </Box>
-          </>
-        ) : (
+  const bottomSlot = (
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '22cqi',
+        gap: 0,
+        fontFamily: CARD_FONT,
+        fontWeight: 800,
+        color: 'text.primary',
+        lineHeight: 1,
+      }}
+    >
+      {points > 0 ? (
+        <>
+          <OpenMojiIcon emoji="🔥" variant="color" size="22cqi" />
           <Box
             component="span"
             sx={{
-              fontSize: '11cqi',
-              fontWeight: 900,
-              color: pastelOnDark(meta.colorHex, 0.6),
-              textTransform: 'uppercase',
+              display: 'inline-flex',
+              alignItems: 'baseline',
+              gap: '5cqi',
+              textBoxTrim: 'trim-both',
+              textBoxEdge: 'cap alphabetic',
             }}
           >
-            no points
+            <Box component="span" sx={{ fontSize: '11cqi', fontWeight: 600, opacity: 0.7 }}>×</Box>
+            <Box component="span" sx={{ fontSize: '18cqi' }}>{points}</Box>
           </Box>
-        )}
-      </Box>
-
-      {/* WINNER overlay — wrapped in a bottom-clip so the slide-in animation
-          stays inside the cell footprint. Slides up from the bottom when
-          spotlight turns on. */}
-      <Box
-        sx={{
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          bottom: 0,
-          minHeight: '52cqi',
-          overflow: 'hidden',
-          pointerEvents: 'none',
-          zIndex: 10,
-        }}
-      >
+        </>
+      ) : (
         <Box
-          aria-hidden={!spotlight}
+          component="span"
           sx={{
-            // Sits over the points area but stretches to the cell's left/right
-            // edges (past horizontal padding).
-            width: '100%',
-            minHeight: '58cqi',
-            py: '5cqi',
-            px: '5cqi',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 0,
-            bgcolor: 'rgba(15,15,22,0.95)',
-            color: meta.colorHex,
-            fontFamily: CARD_FONT,
-            transform: spotlight ? 'translateY(0)' : 'translateY(101%)',
-            transition: 'transform 380ms cubic-bezier(0.22, 1, 0.36, 1)',
-            textAlign: 'center',
+            fontSize: '11cqi',
+            fontWeight: 900,
+            color: pastelOnDark(meta.colorHex, 0.6),
+            textTransform: 'uppercase',
           }}
         >
+          no points
+        </Box>
+      )}
+    </Box>
+  );
+
+  // Key on the current trick's winnerId so the overlay remounts on every
+  // trick advance — keeps the post-exit reset out of the transition system
+  // entirely (a fresh element doesn't animate its initial styles).
+  const overlayKey = round.tricks[round.currentTrickIndex]?.winnerId ?? 'none';
+
+  return (
+    <PlayerSlot
+      meta={meta}
+      ready
+      top={topSlot}
+      middle={middleSlot}
+      bottom={bottomSlot}
+    >
+      <WinnerOverlay
+        key={overlayKey}
+        spotlight={spotlight}
+        colorHex={meta.colorHex}
+        winReason={winReason}
+      />
+    </PlayerSlot>
+  );
+}
+
+interface WinnerOverlayProps {
+  spotlight: boolean;
+  colorHex: string;
+  winReason: string;
+}
+
+function WinnerOverlay({ spotlight, colorHex, winReason }: WinnerOverlayProps) {
+  // `wasShown` is internal to the overlay's lifetime. The parent re-keys this
+  // component on trick advance, so a new trick's overlay always starts at
+  // `wasShown = false` (closed clip, in-place transform) with no transitions
+  // to animate from the previous state.
+  const [wasShown, setWasShown] = useState(false);
+  useEffect(() => {
+    if (spotlight) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setWasShown(true);
+    }
+  }, [spotlight]);
+
+  return (
+    <Box
+      sx={{
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        bottom: 0,
+        minHeight: '58cqi',
+        overflow: 'hidden',
+        pointerEvents: 'none',
+        zIndex: 10,
+      }}
+    >
+      <Box
+        aria-hidden={!spotlight}
+        sx={{
+          width: '100%',
+          minHeight: '58cqi',
+          py: '5cqi',
+          px: '5cqi',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 0,
+          bgcolor: 'rgba(15,15,22,0.95)',
+          color: colorHex,
+          fontFamily: CARD_FONT,
+          textAlign: 'center',
+          // Once shown, clip stays open and exits use slide. Before first show,
+          // overlay is at translateY(0) but masked closed, so entry is purely
+          // a clip-path reveal with no slide.
+          clipPath: (spotlight || wasShown) ? 'inset(0 0 0 0)' : 'inset(0 50% 0 50%)',
+          transform:
+            wasShown && !spotlight ? 'translateY(101%)' : 'translateY(0)',
+          transition:
+            'clip-path 420ms cubic-bezier(0.22, 1, 0.36, 1), transform 380ms cubic-bezier(0.22, 1, 0.36, 1)',
+        }}
+      >
         <Box
           sx={{
             fontSize: '14cqi',
@@ -360,7 +402,6 @@ export default function PlayerCell({
             {winReason}
           </Box>
         )}
-        </Box>
       </Box>
     </Box>
   );

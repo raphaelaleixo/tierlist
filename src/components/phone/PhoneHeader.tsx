@@ -40,7 +40,7 @@ export default function PhoneHeader({ me, roomId, hearts, category }: Props) {
         <Typography
           sx={{
             color: 'error.main',
-            fontFamily: '"Pixelify Sans", monospace',
+            
             fontSize: '0.8rem',
           }}
         >

@@ -77,7 +77,7 @@ export default function PhoneCardPlay({ roomId, gameState, myId, meta }: Props) 
             R{round.number} · TRICK {round.currentTrickIndex + 1}/5
           </Typography>
           <Typography
-            sx={{ color: 'error.main', fontFamily: '"Pixelify Sans", monospace', fontSize: '0.75rem' }}
+            sx={{ color: 'error.main',  fontSize: '0.75rem' }}
           >
             <FirePoints points={myHearts} invert size="0.8rem" />
           </Typography>
@@ -136,7 +136,7 @@ export default function PhoneCardPlay({ roomId, gameState, myId, meta }: Props) 
               >
                 <Typography
                   sx={{
-                    fontFamily: '"Pixelify Sans", monospace',
+                    
                     fontSize: '1.4rem',
                     color: card.played ? 'text.secondary' : 'text.secondary',
                     opacity: 0.6,

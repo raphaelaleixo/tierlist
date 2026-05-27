@@ -12,8 +12,8 @@ export const PLAYER_COLOR_HEX: Record<PlayerColor, string> = {
   magenta: '#a874b0', // mauve
 };
 
-const PIXEL_FONT = '"Pixelify Sans", "Courier New", monospace';
-const BODY_FONT = '"Pixelify Sans", system-ui, -apple-system, "Segoe UI", sans-serif';
+const CARD_FONT =
+  '"Bricolage Grotesque", -apple-system, "Helvetica Neue", "Segoe UI", system-ui, sans-serif';
 
 const theme = createTheme({
   palette: {
@@ -35,15 +35,9 @@ const theme = createTheme({
     },
   },
   typography: {
-    fontFamily: BODY_FONT,
-    h1: { fontFamily: PIXEL_FONT, letterSpacing: 0 },
-    h2: { fontFamily: PIXEL_FONT, letterSpacing: 0 },
-    h3: { fontFamily: PIXEL_FONT, letterSpacing: 0 },
-    h4: { fontFamily: PIXEL_FONT, letterSpacing: 0 },
-    h5: { fontFamily: PIXEL_FONT, letterSpacing: 0 },
-    h6: { fontFamily: PIXEL_FONT, letterSpacing: 0 },
-    button: { fontFamily: PIXEL_FONT, letterSpacing: 0, textTransform: 'none' },
-    overline: { fontFamily: PIXEL_FONT, letterSpacing: 1 },
+    fontFamily: CARD_FONT,
+    button: { letterSpacing: 0, textTransform: 'none' },
+    overline: { letterSpacing: 1 },
   },
   shape: { borderRadius: 4 },
   components: {
@@ -59,4 +53,4 @@ const theme = createTheme({
 });
 
 export default theme;
-export { PIXEL_FONT, BODY_FONT };
+export { CARD_FONT };

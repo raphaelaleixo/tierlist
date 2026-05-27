@@ -90,7 +90,7 @@ export default function BigScreenEndReveal({ gameState, meta }: Props) {
                               >
                                 <Typography
                                   sx={{
-                                    fontFamily: '"Pixelify Sans", monospace',
+                                    
                                     fontSize: '1rem',
                                     color: m.colorHex,
                                     width: 24,

@@ -124,8 +124,8 @@ function bootstrapToEndReveal(count: number): GameState {
 }
 
 type FixtureKey =
+  | 'phase-flow'
   | 'cat-pick-mid'
-  | 'cat-pick-all'
   | 'tier-writing-mid'
   | 'card-play-progressive'
   | 'card-play-pending'
@@ -178,6 +178,15 @@ function sliceProgressiveCardPlay(base: GameState, played: number): GameState {
 }
 
 const FIXTURES: Record<FixtureKey, { label: string; build: (count: number) => GameState }> = {
+  'phase-flow': {
+    label: 'Full phase flow',
+    // Driven imperatively in the component (see `flowState` below); the build
+    // is only used as a starting placeholder.
+    build: (count) => {
+      const roster = ROSTER.slice(0, count);
+      return createInitialGameState(roster.map((r) => r.id), 1);
+    },
+  },
   'cat-pick-mid': {
     label: 'Cat-pick · 2 in',
     build: (count) => {
@@ -185,15 +194,6 @@ const FIXTURES: Record<FixtureKey, { label: string; build: (count: number) => Ga
       let s = createInitialGameState(roster.map((r) => r.id), 1);
       const halfway = Math.min(2, count - 1);
       for (let i = 0; i < halfway; i++) s = submitCategory(s, roster[i].id, roster[i].r1.category);
-      return s;
-    },
-  },
-  'cat-pick-all': {
-    label: 'Cat-pick · all in',
-    build: (count) => {
-      const roster = ROSTER.slice(0, count);
-      let s = createInitialGameState(roster.map((r) => r.id), 1);
-      for (const e of roster) s = submitCategory(s, e.id, e.r1.category);
       return s;
     },
   },
@@ -318,6 +318,63 @@ export default function MockBigScreen() {
 
   const room = useMemo(() => buildMockRoom(playerCount), [playerCount]);
 
+  // Phase-flow demo: walks createInitialGameState → submitCategory ×N →
+  // startTierWriting → submitTierList ×N → dealHands → startCardPlay with
+  // small delays in between so the slide-up transitions are visible.
+  const [flowState, setFlowState] = useState<GameState | null>(null);
+  const [flowLoopTick, setFlowLoopTick] = useState(0);
+  useEffect(() => {
+    if (fixtureKey !== 'phase-flow') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setFlowState(null);
+      return;
+    }
+    const roster = ROSTER.slice(0, playerCount);
+    const initial = createInitialGameState(roster.map((r) => r.id), 1);
+    setFlowState(initial);
+    const timers: number[] = [];
+    const STEP_MS = 600;       // gap between consecutive player submissions
+    const TRANSITION_MS = 1400; // pause for the banner slide-up
+    let t = 0;
+
+    // Phase 1: each player picks a category.
+    for (let i = 0; i < playerCount; i++) {
+      t += STEP_MS;
+      const id = roster[i].id;
+      const category = roster[i].r1.category;
+      timers.push(window.setTimeout(() => {
+        setFlowState((prev) => (prev ? submitCategory(prev, id, category) : prev));
+      }, t));
+    }
+    // Pause for the slide-up, then move into tier-writing.
+    t += TRANSITION_MS;
+    timers.push(window.setTimeout(() => {
+      setFlowState((prev) => (prev ? startTierWriting(prev) : prev));
+    }, t));
+
+    // Phase 2: each player writes a tier list (matching the right-neighbour
+    // rotation that R1 uses).
+    for (let i = 0; i < playerCount; i++) {
+      t += STEP_MS;
+      const writer = roster[i];
+      const rightIdx = (i + 1) % playerCount;
+      const list = makeList(roster[rightIdx].r1.items);
+      timers.push(window.setTimeout(() => {
+        setFlowState((prev) => (prev ? submitTierList(prev, writer.id, list) : prev));
+      }, t));
+    }
+    // Pause again, then deal hands + start card-play.
+    t += TRANSITION_MS;
+    timers.push(window.setTimeout(() => {
+      setFlowState((prev) => {
+        if (!prev) return prev;
+        return startCardPlay(dealHands(prev, IDENTITY_SHUFFLE));
+      });
+    }, t));
+
+    return () => timers.forEach(clearTimeout);
+  }, [fixtureKey, playerCount, flowLoopTick]);
+
   // Progressive-demo: when the fixture is "card-play-progressive":
   //   1. Play one card every ~900ms (drop-in animation).
   //   2. After all cards are down, wait ~1500ms then resolve the trick
@@ -353,6 +410,9 @@ export default function MockBigScreen() {
   }, [fixtureKey, playerCount, progressiveLoopTick]);
 
   const gameState = useMemo(() => {
+    if (fixtureKey === 'phase-flow') {
+      return flowState ?? FIXTURES[fixtureKey].build(playerCount);
+    }
     if (fixtureKey === 'card-play-progressive') {
       let state = sliceProgressiveCardPlay(progressiveBase, progressivePlayed);
       if (progressiveRevealed && progressivePlayed === playerCount) {
@@ -361,20 +421,27 @@ export default function MockBigScreen() {
       return state;
     }
     return FIXTURES[fixtureKey].build(playerCount);
-  }, [fixtureKey, playerCount, progressivePlayed, progressiveRevealed, progressiveBase]);
+  }, [fixtureKey, playerCount, flowState, progressivePlayed, progressiveRevealed, progressiveBase]);
 
-  // Mock dismiss: clicking a resolved trick loops the progressive demo back
-  // to "no cards played" so the entry + winner + exit animations play again.
-  // The reset must be synchronous (not from a useEffect) so the next render
-  // already shows the cleared gameState — otherwise the cards flash back
-  // into place between the animation finishing and the demo restarting.
-  const handleDismiss = fixtureKey === 'card-play-progressive'
-    ? () => {
+  // Mock dismiss: clicking a resolved trick loops the relevant demo back to
+  // its start so the animations play again. Reset must be synchronous (not
+  // from a useEffect) to avoid a one-frame flash of the previous state.
+  const handleDismiss = (() => {
+    if (fixtureKey === 'card-play-progressive') {
+      return () => {
         setProgressivePlayed(0);
         setProgressiveRevealed(false);
         setProgressiveLoopTick((n) => n + 1);
-      }
-    : undefined;
+      };
+    }
+    if (fixtureKey === 'phase-flow') {
+      return () => {
+        setFlowState(null);
+        setFlowLoopTick((n) => n + 1);
+      };
+    }
+    return undefined;
+  })();
 
   return (
     <Box sx={{ minHeight: '100vh', position: 'relative' }}>

@@ -33,7 +33,7 @@ export default function PhoneEndGame({ gameState, myId, meta }: Props) {
         </Typography>
         <Box>
           <Typography
-            sx={{ fontFamily: '"Pixelify Sans", monospace', color: 'error.main', fontSize: '1.6rem' }}
+            sx={{  color: 'error.main', fontSize: '1.6rem' }}
           >
             <FirePoints points={myHearts} invert size="1.2rem" />
           </Typography>

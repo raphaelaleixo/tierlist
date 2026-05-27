@@ -99,7 +99,7 @@ export default function PhoneTierWriting({ roomId, gameState, myId, meta }: Prop
                   border: '2px solid',
                   borderColor: 'rgba(255,255,255,0.16)',
                   borderRadius: 1,
-                  fontFamily: '"Pixelify Sans", monospace',
+                  
                   fontSize: '1.4rem',
                   color: 'primary.main',
                 }}
@@ -161,7 +161,7 @@ function RecapView({ list, willPlayName, willPlayColor, category }: { list: Tier
             >
               <Typography
                 sx={{
-                  fontFamily: '"Pixelify Sans", monospace',
+                  
                   fontSize: '1.1rem',
                   color: 'primary.main',
                   width: 28,

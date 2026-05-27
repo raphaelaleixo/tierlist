@@ -55,7 +55,7 @@ export default function BigScreenFinalScore({ gameState, meta }: Props) {
                   sx={{
                     width: 36,
                     color: 'text.secondary',
-                    fontFamily: '"Pixelify Sans", monospace',
+                    
                   }}
                 >
                   {idx + 1}
@@ -65,7 +65,7 @@ export default function BigScreenFinalScore({ gameState, meta }: Props) {
                 <Typography
                   sx={{
                     color: 'error.main',
-                    fontFamily: '"Pixelify Sans", monospace',
+                    
                     fontSize: '1rem',
                   }}
                 >
@@ -77,7 +77,7 @@ export default function BigScreenFinalScore({ gameState, meta }: Props) {
                     sx={{
                       ml: 2,
                       color: m.colorHex,
-                      fontFamily: '"Pixelify Sans", monospace',
+                      
                     }}
                   >
                     WIN
