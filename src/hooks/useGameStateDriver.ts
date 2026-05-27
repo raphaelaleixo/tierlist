@@ -30,7 +30,7 @@ import { writeGameState } from './useGameState';
 // add a dedicated "revealing" intermediate state; for now the driver just waits.
 const CATEGORY_REVEAL_DELAY_MS = 3000; // window for "all categories in" reveal beat
 const TRICK_REVEAL_DELAY_MS = 2400;    // window for per-card flip cinema
-const POST_RESOLVE_DELAY_MS = 1500;    // window for winner highlight + heart pop
+const POST_RESOLVE_DELAY_MS = 6700;    // covers banner reveal + WINNER overlay + migration
 const ROUND_END_DELAY_MS = 2500;       // window for end-of-round transition
 
 export function useGameStateDriver(

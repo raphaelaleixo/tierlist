@@ -2,6 +2,7 @@ import { Box, Typography } from '@mui/material';
 import type { TierRoomState } from '../hooks/useFirebaseRoom';
 import type { GameState } from '../game/types';
 import { buildPlayerMeta } from './big-screen/playerMeta';
+import AppHeader from './AppHeader';
 import PhoneHeader from './phone/PhoneHeader';
 import PhoneCategoryPick from './phone/PhoneCategoryPick';
 import PhoneTierWriting from './phone/PhoneTierWriting';
@@ -66,6 +67,7 @@ export default function PhoneGame({ roomId, roomState, gameState, myId }: Props)
 
   return (
     <Box sx={{ minHeight: '100vh' }}>
+      <AppHeader roomCode={roomState.roomId} roomState={roomState} />
       <PhoneHeader me={me} roomId={roomState.roomId} {...headerProps} />
       {body}
     </Box>

@@ -1,7 +1,8 @@
-import { Container, Typography } from '@mui/material';
+import { Box, Container, Typography } from '@mui/material';
 import type { TierRoomState } from '../hooks/useFirebaseRoom';
 import { useGameStateDriver } from '../hooks/useGameStateDriver';
 import type { GameState } from '../game/types';
+import AppHeader from './AppHeader';
 import BigScreenCategoryPick from './big-screen/BigScreenCategoryPick';
 import BigScreenTierWriting from './big-screen/BigScreenTierWriting';
 import BigScreenCardPlay from './big-screen/BigScreenCardPlay';
@@ -15,45 +16,61 @@ interface Props {
   gameState: GameState;
   /** When true, this client drives auto-transitions. Only the big screen should. */
   drive?: boolean;
+  /** Mock-only: clicking a resolved trick will play the dismiss animation
+   *  then invoke this callback (parent decides how to advance state). */
+  onDismiss?: () => void;
 }
 
-export default function BigScreenGame({ roomId, roomState, gameState, drive = false }: Props) {
+export default function BigScreenGame({ roomId, roomState, gameState, drive = false, onDismiss }: Props) {
   useGameStateDriver(drive ? roomId : undefined, drive ? gameState : null);
   const meta = buildPlayerMeta(roomState);
 
-  if (gameState.phase === 'game-end-reveal') {
-    return <BigScreenEndReveal gameState={gameState} meta={meta} />;
-  }
-  if (gameState.phase === 'final-score') {
-    return <BigScreenFinalScore gameState={gameState} meta={meta} />;
-  }
-
-  // phase === 'in-round'
-  const round = gameState.rounds[gameState.currentRoundIndex];
-  if (!round) {
-    return (
-      <Container sx={{ py: 6 }}>
-        <Typography color="text.secondary">No active round.</Typography>
-      </Container>
-    );
-  }
-
-  switch (round.phase) {
-    case 'category-pick':
-      return <BigScreenCategoryPick gameState={gameState} round={round} meta={meta} />;
-    case 'tier-writing':
-      return <BigScreenTierWriting gameState={gameState} round={round} meta={meta} />;
-    case 'card-play':
-      return <BigScreenCardPlay gameState={gameState} round={round} meta={meta} />;
-    case 'round-end':
+  const body = (() => {
+    if (gameState.phase === 'game-end-reveal') {
+      return <BigScreenEndReveal gameState={gameState} meta={meta} />;
+    }
+    if (gameState.phase === 'final-score') {
+      return <BigScreenFinalScore gameState={gameState} meta={meta} />;
+    }
+    const round = gameState.rounds[gameState.currentRoundIndex];
+    if (!round) {
       return (
-        <Container sx={{ py: 6, textAlign: 'center' }}>
-          <Typography variant="h3" sx={{ color: 'primary.main' }}>
-            ROUND {round.number} COMPLETE
-          </Typography>
+        <Container sx={{ py: 6 }}>
+          <Typography color="text.secondary">No active round.</Typography>
         </Container>
       );
-    default:
-      return null;
-  }
+    }
+    switch (round.phase) {
+      case 'category-pick':
+        return <BigScreenCategoryPick gameState={gameState} round={round} meta={meta} />;
+      case 'tier-writing':
+        return <BigScreenTierWriting gameState={gameState} round={round} meta={meta} />;
+      case 'card-play':
+        return (
+          <BigScreenCardPlay
+            gameState={gameState}
+            round={round}
+            meta={meta}
+            onDismiss={onDismiss}
+          />
+        );
+      case 'round-end':
+        return (
+          <Container sx={{ py: 6, textAlign: 'center' }}>
+            <Typography variant="h3" sx={{ color: 'primary.main' }}>
+              ROUND {round.number} COMPLETE
+            </Typography>
+          </Container>
+        );
+      default:
+        return null;
+    }
+  })();
+
+  return (
+    <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <AppHeader roomCode={roomId} roomState={roomState} showFullscreen />
+      {body}
+    </Box>
+  );
 }

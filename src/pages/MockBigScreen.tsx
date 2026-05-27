@@ -50,7 +50,7 @@ const ROSTER: RosterEntry[] = [
     r1: { category: { name: 'Snacks',          emoji: '🍿' }, items: ['Cheetos', 'Doritos', 'Pringles', 'Lays', 'Twinkies', 'Black licorice'] },
     r2: { category: { name: 'Cars',            emoji: '🚗' }, items: ['Mustang', 'Civic', 'Beetle', 'Corolla', 'Hummer', 'PT Cruiser'] } },
   { id: 5, name: 'Ed', color: 'green',
-    r1: { category: { name: 'Books',           emoji: '📚' }, items: ['1984', 'Sapiens', 'The Hobbit', 'Twilight', 'Atlas Shrugged', 'The Da Vinci Code'] },
+    r1: { category: { name: 'Books',           emoji: '📚' }, items: ['1984', "The Hitchhiker's Guide to the Galaxy", 'The Hobbit', 'Twilight', 'Atlas Shrugged', 'The Da Vinci Code'] },
     r2: { category: { name: 'Sandwiches',      emoji: '🥪' }, items: ['BLT', 'Reuben', 'Cuban', 'Club', 'Tuna melt', 'PB&J'] } },
   { id: 6, name: 'Fay', color: 'orange',
     r1: { category: { name: 'Coffee drinks',   emoji: '☕' }, items: ['Espresso', 'Latte', 'Cappuccino', 'Americano', 'Frappuccino', 'Decaf'] },
@@ -127,10 +127,55 @@ type FixtureKey =
   | 'cat-pick-mid'
   | 'cat-pick-all'
   | 'tier-writing-mid'
+  | 'card-play-progressive'
   | 'card-play-pending'
   | 'card-play-resolved-upset'
+  | 'card-play-late-round'
   | 'end-reveal'
   | 'final-score';
+
+// Build the full card-play state with one card played per player (each in a
+// distinct tier). The card IDs are stable for the lifetime of this state, so
+// we can slice it for the progressive demo without triggering remounts.
+function buildFullProgressiveCardPlay(count: number): GameState {
+  let s = bootstrapToCardPlay(count);
+  const roster = ROSTER.slice(0, count);
+  const tierByIndex: Array<'S' | 'A' | 'F' | 'B' | 'C' | 'D'> = ['S', 'A', 'F', 'B', 'C', 'D'];
+  for (let i = 0; i < count; i++) {
+    const tier = tierByIndex[i];
+    const card = s.rounds[0].perPlayer[roster[i].id].hand!.find((c) => c.tier === tier)!;
+    s = playCard(s, roster[i].id, card.id);
+  }
+  return s;
+}
+
+// Truncate a full card-play state so only the first `played` plays remain.
+// Stable card IDs from `base` ensure already-mounted TierCards keep their key.
+function sliceProgressiveCardPlay(base: GameState, played: number): GameState {
+  const round = base.rounds[0]!;
+  const trick = round.tricks[round.currentTrickIndex];
+  const truncatedPlays = trick.plays.slice(0, played);
+  const stillPlayed = new Set(truncatedPlays.map((p) => p.cardId));
+
+  const newPerPlayer: typeof round.perPlayer = {};
+  for (const [pid, ps] of Object.entries(round.perPlayer)) {
+    newPerPlayer[Number(pid)] = {
+      ...ps,
+      hand: ps.hand?.map((c) => ({ ...c, played: stillPlayed.has(c.id) })) ?? null,
+    };
+  }
+
+  return {
+    ...base,
+    rounds: [
+      {
+        ...round,
+        perPlayer: newPerPlayer,
+        tricks: [{ ...trick, plays: truncatedPlays }],
+      },
+    ],
+  };
+}
 
 const FIXTURES: Record<FixtureKey, { label: string; build: (count: number) => GameState }> = {
   'cat-pick-mid': {
@@ -168,6 +213,12 @@ const FIXTURES: Record<FixtureKey, { label: string; build: (count: number) => Ga
       return s;
     },
   },
+  'card-play-progressive': {
+    label: 'Card-play · animated drop-in',
+    // Initial state shown if this fixture is selected; the component overrides
+    // it with the sliced progressive state on each tick.
+    build: (count) => sliceProgressiveCardPlay(buildFullProgressiveCardPlay(count), 0),
+  },
   'card-play-pending': {
     label: 'Card-play · 2 played',
     build: (count) => {
@@ -195,6 +246,40 @@ const FIXTURES: Record<FixtureKey, { label: string; build: (count: number) => Ga
         s = playCard(s, roster[i].id, card.id);
       }
       return resolveCurrentTrick(s);
+    },
+  },
+  'card-play-late-round': {
+    label: 'Card-play · trick 5 (full board)',
+    build: (count) => {
+      let s = bootstrapToCardPlay(count);
+      const roster = ROSTER.slice(0, count);
+      // Play through the first 4 tricks completely so the live tier list fills
+      // up with 4 × playerCount cards before we land on trick 5.
+      // We pick varied tiers per trick to spread cards across all six rows.
+      const tierForTrickPlayer: Array<Array<'S' | 'A' | 'F' | 'B' | 'C' | 'D'>> = [
+        ['S', 'A', 'B', 'C', 'D', 'F'],
+        ['A', 'B', 'C', 'D', 'F', 'S'],
+        ['B', 'C', 'D', 'F', 'S', 'A'],
+        ['F', 'S', 'A', 'B', 'C', 'D'],
+      ];
+      for (let t = 0; t < 4; t++) {
+        for (let i = 0; i < count; i++) {
+          const tier = tierForTrickPlayer[t][i];
+          const card = s.rounds[0].perPlayer[roster[i].id].hand!.find(
+            (c) => c.tier === tier && !c.played,
+          )!;
+          s = playCard(s, roster[i].id, card.id);
+        }
+        s = resolveCurrentTrick(s);
+        s = advanceAfterTrick(s);
+      }
+      // Trick 5: two players have played so far.
+      const toPlay = Math.min(2, count);
+      for (let i = 0; i < toPlay; i++) {
+        const remaining = s.rounds[0].perPlayer[roster[i].id].hand!.find((c) => !c.played)!;
+        s = playCard(s, roster[i].id, remaining.id);
+      }
+      return s;
     },
   },
   'end-reveal': {
@@ -232,11 +317,73 @@ export default function MockBigScreen() {
   }, []);
 
   const room = useMemo(() => buildMockRoom(playerCount), [playerCount]);
-  const gameState = useMemo(() => FIXTURES[fixtureKey].build(playerCount), [fixtureKey, playerCount]);
+
+  // Progressive-demo: when the fixture is "card-play-progressive":
+  //   1. Play one card every ~900ms (drop-in animation).
+  //   2. After all cards are down, wait ~1500ms then resolve the trick
+  //      (banners slide up → tiers revealed).
+  // The base state is memoised so card IDs stay stable across ticks —
+  // already-mounted TierCards keep their key and don't re-animate.
+  const [progressivePlayed, setProgressivePlayed] = useState(0);
+  const [progressiveRevealed, setProgressiveRevealed] = useState(false);
+  // Incremented on dismiss to re-run the progressive demo from the top.
+  const [progressiveLoopTick, setProgressiveLoopTick] = useState(0);
+  const progressiveBase = useMemo(
+    () => buildFullProgressiveCardPlay(playerCount),
+    [playerCount],
+  );
+  useEffect(() => {
+    if (fixtureKey !== 'card-play-progressive') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setProgressivePlayed(0);
+      setProgressiveRevealed(false);
+      return;
+    }
+    setProgressivePlayed(0);
+    setProgressiveRevealed(false);
+    const timers: number[] = [];
+    for (let i = 1; i <= playerCount; i++) {
+      timers.push(window.setTimeout(() => setProgressivePlayed(i), 900 * i));
+    }
+    // Reveal beat: 1500ms after the last card lands.
+    timers.push(
+      window.setTimeout(() => setProgressiveRevealed(true), 900 * playerCount + 1500),
+    );
+    return () => timers.forEach(clearTimeout);
+  }, [fixtureKey, playerCount, progressiveLoopTick]);
+
+  const gameState = useMemo(() => {
+    if (fixtureKey === 'card-play-progressive') {
+      let state = sliceProgressiveCardPlay(progressiveBase, progressivePlayed);
+      if (progressiveRevealed && progressivePlayed === playerCount) {
+        state = resolveCurrentTrick(state);
+      }
+      return state;
+    }
+    return FIXTURES[fixtureKey].build(playerCount);
+  }, [fixtureKey, playerCount, progressivePlayed, progressiveRevealed, progressiveBase]);
+
+  // Mock dismiss: clicking a resolved trick loops the progressive demo back
+  // to "no cards played" so the entry + winner + exit animations play again.
+  // The reset must be synchronous (not from a useEffect) so the next render
+  // already shows the cleared gameState — otherwise the cards flash back
+  // into place between the animation finishing and the demo restarting.
+  const handleDismiss = fixtureKey === 'card-play-progressive'
+    ? () => {
+        setProgressivePlayed(0);
+        setProgressiveRevealed(false);
+        setProgressiveLoopTick((n) => n + 1);
+      }
+    : undefined;
 
   return (
     <Box sx={{ minHeight: '100vh', position: 'relative' }}>
-      <BigScreenGame roomId={room.roomId} roomState={room} gameState={gameState} />
+      <BigScreenGame
+        roomId={room.roomId}
+        roomState={room}
+        gameState={gameState}
+        onDismiss={handleDismiss}
+      />
 
       {/* Discoverability hint when dev panel is closed */}
       {!devOpen && (

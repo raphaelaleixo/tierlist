@@ -1,7 +1,8 @@
+import { useLayoutEffect, useRef, useState } from "react";
 import { Box } from "@mui/material";
 import type { PlayerColor, Tier } from "../game/types";
 import { openMojiBlackUrl } from "../utils/openMoji";
-import { blobBorderRadius, pastel, pastelOnDark } from "../utils/blob";
+import { blobBorderRadius, pastel } from "../utils/blob";
 import { PLAYER_COLOR_HEX } from "../theme/theme";
 
 // Single played-card visual. Used in:
@@ -65,6 +66,15 @@ export interface TierCardProps {
   heightBound?: boolean;
   /** Visual variant. Default "light". */
   variant?: Variant;
+  /** Optional entry/exit animation:
+   *  - "drop-in":   scales down from 2× while falling into place (when played)
+   *  - "pop-in":    scales up from 0 (when arriving in the live tier list)
+   *  - "scale-out": scales to 0 + fades (when leaving a cell during migration)
+   */
+  animation?: 'drop-in' | 'pop-in' | 'scale-out';
+  /** Compact form: drops the top category label and the bottom tier banner.
+   *  Used for thumbnail/history views where only the emoji + item are needed. */
+  compact?: boolean;
 }
 
 export default function TierCard({
@@ -78,14 +88,74 @@ export default function TierCard({
   width = 300,
   heightBound = false,
   variant = "light",
+  animation,
+  compact = false,
 }: TierCardProps) {
   const accent = revealed ? TIER_COLORS[tier] : "#9a9a9a";
   const tokens = VARIANT_TOKENS[variant];
   const holderHex = PLAYER_COLOR_HEX[holderColor];
+
+  // Shrink-to-fit on the item text. We only care about ONE case: a single
+  // word that's wider than the available horizontal space (multi-word text
+  // already wraps naturally). `scrollWidth` doesn't catch this when overflow
+  // is `visible`, so we use canvas `measureText` to find the widest word and
+  // compare it to the parent's inline-size.
+  const itemRef = useRef<HTMLDivElement>(null);
+  const [itemScale, setItemScale] = useState(1);
+  useLayoutEffect(() => {
+    const el = itemRef.current;
+    if (!el) return;
+    const measure = () => {
+      const parent = el.parentElement;
+      if (!parent) return;
+      const cs = window.getComputedStyle(el);
+      const fontSize = parseFloat(cs.fontSize);
+      const fontFamily = cs.fontFamily;
+      const fontWeight = cs.fontWeight || "400";
+      const letterSpacing = parseFloat(cs.letterSpacing) || 0;
+      if (!fontSize || !Number.isFinite(fontSize)) return;
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+      const words = item.toUpperCase().split(/\s+/).filter(Boolean);
+      let widest = 0;
+      for (const word of words) {
+        const w =
+          ctx.measureText(word).width +
+          Math.max(0, word.length - 1) * letterSpacing;
+        if (w > widest) widest = w;
+      }
+      // Available width is the parent (item wrapper) clientWidth.
+      const available = parent.clientWidth;
+      if (widest > available && widest > 0) {
+        setItemScale(Math.max(0.4, (available / widest) * 0.97));
+      } else {
+        setItemScale(1);
+      }
+    };
+    let raf = requestAnimationFrame(measure);
+    if ("fonts" in document) {
+      document.fonts.ready.then(measure).catch(() => {});
+    }
+    const ro = new ResizeObserver(() => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(measure);
+    });
+    ro.observe(el);
+    if (el.parentElement) ro.observe(el.parentElement);
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
+  }, [item]);
   // Both the card body and the blob tint in the holder's colour, at different
   // opacities so the blob still reads as a distinct shape inside the card.
-  const cardBg = variant === "dark" ? pastelOnDark(holderHex, 0.18) : pastel(holderHex, 0.1);
-  const blobBg = variant === "dark" ? pastelOnDark(holderHex, 0.45) : pastel(holderHex, 0.3);
+  const cardBg = variant === "dark" ? "#0a0a14" : "#ffffff";
+  const blobBg = variant === "dark" ? holderHex : pastel(holderHex, 0.3);
+  // Compact cards drop the blob, so use the brighter `blobBg` for the card
+  // body itself — keeps the holder colour readable at small sizes.
+  const bodyBg = compact ? blobBg : cardBg;
   void writerName; // reserved for a future writer-attribution label
 
   return (
@@ -98,15 +168,38 @@ export default function TierCard({
     >
       <Box
         sx={{
-          bgcolor: cardBg,
+          bgcolor: bodyBg,
           borderRadius: "7.5cqi",
           overflow: "hidden",
           display: "flex",
           flexDirection: "column",
-          boxShadow: "none",
+          boxShadow: "0 3cqi 8cqi rgba(0, 0, 0, 0.45)",
           aspectRatio: "5/7",
           p: "10cqi",
-          pb: "0",
+          pb: compact ? "10cqi" : "0",
+          transformOrigin: "center center",
+          ...(animation === "drop-in" && {
+            animation: "tierCardDropIn 600ms cubic-bezier(0.22, 1, 0.36, 1) both",
+            "@keyframes tierCardDropIn": {
+              "0%": { transform: "translateY(-110vh)", opacity: 0 },
+              "10%": { opacity: 1 },
+              "100%": { transform: "translateY(0)", opacity: 1 },
+            },
+          }),
+          ...(animation === "pop-in" && {
+            animation: "tierCardPopIn 300ms cubic-bezier(0.34, 1.5, 0.64, 1) both",
+            "@keyframes tierCardPopIn": {
+              "0%": { transform: "scale(0)", opacity: 0 },
+              "100%": { transform: "scale(1)", opacity: 1 },
+            },
+          }),
+          ...(animation === "scale-out" && {
+            animation: "tierCardScaleOut 320ms cubic-bezier(0.4, 0, 0.7, 0.3) both",
+            "@keyframes tierCardScaleOut": {
+              "0%": { transform: "scale(1)", opacity: 1 },
+              "100%": { transform: "scale(0)", opacity: 0 },
+            },
+          }),
         }}
       >
         <Box
@@ -117,44 +210,52 @@ export default function TierCard({
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
-            backgroundColor: cardBg,
+            backgroundColor: bodyBg,
           }}
         >
           {/* Category top label */}
+          {!compact && (
+            <Box
+              sx={{
+                fontSize: "4cqi",
+                fontWeight: 600,
+                letterSpacing: 2,
+                color: tokens.textPrimary,
+                bgcolor: bodyBg,
+                textTransform: "uppercase",
+              }}
+            >
+              {category}
+            </Box>
+          )}
+          {/* Emoji block — OpenMoji black SVG over a deterministic blob.
+              Absolutely centered so the item text can grow/wrap without
+              shifting the focal artwork. */}
           <Box
             sx={{
-              fontSize: "4cqi",
-              fontWeight: 600,
-              letterSpacing: 2,
-              color: tokens.textPrimary,
-              bgcolor: cardBg,
-              textTransform: "uppercase",
-            }}
-          >
-            {category}
-          </Box>
-          {/* Emoji block — OpenMoji black SVG over a deterministic blob */}
-          <Box
-            sx={{
-              position: "relative",
+              position: "absolute",
+              top: compact ? "36%" : "42%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
               width: "60cqi",
               aspectRatio: "1",
-              my: "auto",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
             }}
           >
-            <Box
-              aria-hidden
-              sx={{
-                position: "absolute",
-                inset: 0,
-                bgcolor: blobBg,
-                borderRadius: blobBorderRadius(emoji),
-                zIndex: 0,
-              }}
-            />
+            {!compact && (
+              <Box
+                aria-hidden
+                sx={{
+                  position: "absolute",
+                  inset: 0,
+                  bgcolor: blobBg,
+                  borderRadius: blobBorderRadius(emoji),
+                  zIndex: 0,
+                }}
+              />
+            )}
             <Box
               component="img"
               src={openMojiBlackUrl(emoji)}
@@ -162,7 +263,7 @@ export default function TierCard({
               sx={{
                 position: "relative",
                 zIndex: 1,
-                width: "40cqi",
+                width: compact ? "60cqi" : "40cqi",
                 aspectRatio: "1",
                 userSelect: "none",
                 display: "block",
@@ -178,19 +279,22 @@ export default function TierCard({
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
+              mt: "auto",
               mb: "10cqi",
             }}
           >
             <Box
+              ref={itemRef}
               sx={{
-                fontSize: "12cqi",
+                fontSize: compact ? "15cqi" : "12cqi",
                 fontWeight: "900",
                 color: tokens.textPrimary,
                 textAlign: "center",
                 letterSpacing: "-0.5px",
                 textTransform: "uppercase",
                 lineHeight: "0.8",
-                maxWidth: "90%",
+                transform: `scale(${itemScale})`,
+                transformOrigin: "center center",
               }}
             >
               {item}
@@ -199,24 +303,27 @@ export default function TierCard({
         </Box>
 
         {/* Bottom tier banner */}
-        <Box
-          sx={{
-            bgcolor: accent,
-            mx: "-10cqi",
-            py: "0.5em",
-            textAlign: "center",
-            color: "#fff",
-            fontFamily: CARD_FONT,
-            fontSize: "8cqi",
-            fontWeight: 900,
-            lineHeight: 1,
-            transform: revealed ? "none" : "translateY(100%)",
-            WebkitTextStroke: "1.5cqi rgba(0,0,0,0.35)",
-            paintOrder: "stroke fill",
-          }}
-        >
-          {revealed ? tier : "?"}
-        </Box>
+        {!compact && (
+          <Box
+            sx={{
+              bgcolor: accent,
+              mx: "-10cqi",
+              py: "0.5em",
+              textAlign: "center",
+              color: "#fff",
+              fontFamily: CARD_FONT,
+              fontSize: "8cqi",
+              fontWeight: 900,
+              lineHeight: 1,
+              transform: revealed ? "none" : "translateY(110%)",
+              transition: "transform 420ms cubic-bezier(0.34, 1.2, 0.64, 1)",
+              WebkitTextStroke: "1.5cqi rgba(0,0,0,0.35)",
+              paintOrder: "stroke fill",
+            }}
+          >
+            {revealed ? tier : "?"}
+          </Box>
+        )}
       </Box>
     </Box>
   );

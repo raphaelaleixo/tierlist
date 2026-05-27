@@ -11,11 +11,22 @@ interface Props {
   /** When true, the unlit (black-line) fires invert to white for dark bgs. */
   invert?: boolean;
   size?: number | string;
+  /** Number of rows to lay the fires across (default 1). */
+  rows?: number;
 }
 
-export default function FirePoints({ points, max = 10, invert = false, size = '1em' }: Props) {
+export default function FirePoints({ points, max = 10, invert = false, size = '1em', rows = 1 }: Props) {
+  const cols = Math.ceil(max / rows);
   return (
-    <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25 }}>
+    <Box
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: `repeat(${cols}, auto)`,
+        columnGap: '1cqi',
+        rowGap: '5cqi',
+        justifyContent: 'center',
+      }}
+    >
       {Array.from({ length: max }).map((_, i) => {
         const lit = i < points;
         return (

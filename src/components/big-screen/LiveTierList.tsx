@@ -34,14 +34,19 @@ interface Props {
   round: Round;
   meta: Record<number, PlayerMeta>;
   seating: number[];
+  /** Card IDs from the CURRENT trick that have already migrated. Past-trick
+   *  cards always show; current-trick cards only show once in this set. */
+  migratedCardIds: Set<string>;
 }
 
-export default function LiveTierList({ round, meta, seating }: Props) {
+export default function LiveTierList({ round, meta, seating, migratedCardIds }: Props) {
   const itemsByTier: Record<Tier, ItemEntry[]> = { S: [], A: [], B: [], C: [], D: [], F: [] };
 
-  for (const trick of round.tricks) {
+  for (const [tIdx, trick] of round.tricks.entries()) {
+    const isCurrentTrick = tIdx === round.currentTrickIndex;
     for (const play of trick.plays) {
       if (!play.revealed) continue;
+      if (isCurrentTrick && !migratedCardIds.has(play.cardId)) continue;
       const card = round.perPlayer[play.playerId]?.hand?.find((c) => c.id === play.cardId);
       const cat = round.perPlayer[play.playerId]?.categoryAssigned;
       const holder = meta[play.playerId];
@@ -124,6 +129,8 @@ function TierRow({ tier, items }: { tier: Tier; items: ItemEntry[] }) {
             revealed
             variant="dark"
             heightBound
+            compact
+            animation="pop-in"
           />
         ))}
       </Box>
