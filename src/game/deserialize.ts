@@ -120,6 +120,11 @@ function hydrateRound(raw: unknown, seating: number[]): Round {
 
   const tricks = toArrayOrObject<Unknown>(r.tricks).map((t, i) => hydrateTrick(t, i));
 
+  const suggestionsRaw = toArrayOrObject<Unknown>(r.categorySuggestions);
+  const categorySuggestions = suggestionsRaw
+    .map((s) => hydrateCategoryChoice(s))
+    .filter((c): c is NonNullable<typeof c> => c !== null);
+
   return {
     number: r.number === 2 ? 2 : 1,
     passDirection: (r.passDirection as PassDirection) ?? 'left',
@@ -128,6 +133,7 @@ function hydrateRound(raw: unknown, seating: number[]): Round {
     tricks,
     currentTrickIndex: typeof r.currentTrickIndex === 'number' ? r.currentTrickIndex : 0,
     firstPlayerId: typeof r.firstPlayerId === 'number' ? r.firstPlayerId : 0,
+    categorySuggestions,
   };
 }
 

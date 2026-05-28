@@ -3,7 +3,6 @@ import type { TierRoomState } from '../hooks/useFirebaseRoom';
 import type { GameState } from '../game/types';
 import { buildPlayerMeta } from './big-screen/playerMeta';
 import AppHeader from './AppHeader';
-import PhoneHeader from './phone/PhoneHeader';
 import PhoneCategoryPick from './phone/PhoneCategoryPick';
 import PhoneTierWriting from './phone/PhoneTierWriting';
 import PhoneCardPlay from './phone/PhoneCardPlay';
@@ -30,7 +29,6 @@ export default function PhoneGame({ roomId, roomState, gameState, myId }: Props)
   }
 
   let body: React.ReactNode = null;
-  let headerProps: { hearts?: number; category?: string | null } = {};
 
   if (gameState.phase === 'in-round') {
     const round = gameState.rounds[gameState.currentRoundIndex];
@@ -46,13 +44,6 @@ export default function PhoneGame({ roomId, roomState, gameState, myId }: Props)
           break;
         case 'card-play':
           body = <PhoneCardPlay roomId={roomId} gameState={gameState} myId={myId} meta={meta} />;
-          {
-            const myCat = round.perPlayer[myId]?.categoryAssigned;
-            headerProps = {
-              hearts: gameState.hearts[myId] ?? 0,
-              category: myCat ? `${myCat.emoji} ${myCat.name}` : null,
-            };
-          }
           break;
         default:
           body = <PhoneWaiting />;
@@ -60,16 +51,35 @@ export default function PhoneGame({ roomId, roomState, gameState, myId }: Props)
     }
   } else if (gameState.phase === 'game-end-reveal' || gameState.phase === 'final-score') {
     body = <PhoneEndGame gameState={gameState} myId={myId} meta={meta} />;
-    headerProps = { hearts: gameState.hearts[myId] ?? 0 };
   } else {
     body = <PhoneWaiting />;
   }
 
   return (
-    <Box sx={{ minHeight: '100vh' }}>
+    <Box
+      sx={{
+        // CSS Grid makes the layout much easier to reason about:
+        //   • row 1 = AppHeader (auto height)
+        //   • row 2 = body wrapper (1fr — exact remaining space)
+        // Row 2 has a DEFINITE height that percentages can resolve against,
+        // so a phase's outer Box can use `min-height: 100%` and actually
+        // get "container minus header". When phase content overflows, row 2
+        // grows past its 1fr basis (default `min-content: auto`) and the
+        // page scrolls — no manual header-height math needed.
+        //
+        // The OUTER's `min-height: 100%` defers viewport sizing to whichever
+        // wrapper mounts PhoneGame. In production PlayerPage wraps it in a
+        // 100dvh Box; the mock wraps it in a flex-grow Box so the dev
+        // toolbar gets its space first.
+        display: 'grid',
+        gridTemplateRows: 'auto 1fr',
+        minHeight: '100%',
+      }}
+    >
       <AppHeader roomCode={roomState.roomId} roomState={roomState} />
-      <PhoneHeader me={me} roomId={roomState.roomId} {...headerProps} />
-      {body}
+      <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        {body}
+      </Box>
     </Box>
   );
 }

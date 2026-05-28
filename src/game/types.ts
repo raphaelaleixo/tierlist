@@ -119,6 +119,10 @@ export interface Round {
   tricks: Trick[];               // grows 0 → 5
   currentTrickIndex: number;     // 0..4
   firstPlayerId: number;         // marker holder at start of round
+  // Shuffled CATEGORY_SUGGESTIONS, sized to seating.length * 3 — each player
+  // reads `categorySuggestions.slice(seatIdx * 3, (seatIdx + 1) * 3)` so no
+  // two players ever see the same suggestion in a round.
+  categorySuggestions: CategoryChoice[];
 }
 
 // ─── Game ─────────────────────────────────────────────────────────────────

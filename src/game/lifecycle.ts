@@ -22,6 +22,7 @@
 
 import { TIERS, type CategoryChoice, type GameState, type HandCard, type PassDirection, type Round, type RoundPlayerState, type Tier, type TierList } from './types';
 import { resolveTrick, type ResolvedPlay } from './rules';
+import { shuffleSuggestionPool } from '../data/categorySuggestions';
 
 export type Shuffle = <T>(arr: T[]) => T[];
 
@@ -71,6 +72,7 @@ function makeRound(number: 1 | 2, passDirection: PassDirection, seating: number[
     tricks: [],
     currentTrickIndex: 0,
     firstPlayerId,
+    categorySuggestions: shuffleSuggestionPool(seating.length * 3),
   };
 }
 

@@ -156,11 +156,19 @@ export default function MockPlayerPhone() {
   const gameState = useMemo(() => FIXTURES[fixtureKey].build(), [fixtureKey]);
 
   return (
-    <Box sx={{ minHeight: '100vh' }}>
+    <Box
+      sx={{
+        // Flex column so the dev toolbar takes its natural height and the
+        // wrapped PhoneGame fills the rest of the viewport — no overflow.
+        height: '100vh',
+        '@supports (height: 100dvh)': { height: '100dvh' },
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
       <Box
         sx={{
-          position: 'sticky',
-          top: 0,
+          flex: '0 0 auto',
           zIndex: 10,
           bgcolor: 'rgba(10,10,20,0.95)',
           borderBottom: '1px solid rgba(255,255,255,0.08)',
@@ -200,7 +208,11 @@ export default function MockPlayerPhone() {
           ))}
         </ToggleButtonGroup>
       </Box>
-      <Container disableGutters maxWidth="xs" sx={{ mx: 'auto' }}>
+      <Container
+        disableGutters
+        maxWidth="xs"
+        sx={{ mx: 'auto', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
+      >
         <PhoneGame roomId={room.roomId} roomState={room} gameState={gameState} myId={seatId} />
       </Container>
     </Box>

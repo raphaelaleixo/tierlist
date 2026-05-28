@@ -77,7 +77,16 @@ export default function PlayerPage() {
           );
         }
         return (
-          <PhoneGame roomId={id!} roomState={roomState} gameState={gameState} myId={playerId} />
+          <Box
+            sx={{
+              // Definite viewport-sized wrapper so PhoneGame's `min-height: 100%`
+              // resolves cleanly. `100dvh` tracks the visible area on mobile.
+              minHeight: '100vh',
+              '@supports (min-height: 100dvh)': { minHeight: '100dvh' },
+            }}
+          >
+            <PhoneGame roomId={id!} roomState={roomState} gameState={gameState} myId={playerId} />
+          </Box>
         );
       }}
     />
