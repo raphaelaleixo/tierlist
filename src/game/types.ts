@@ -83,6 +83,10 @@ export interface Trick {
   plays: Play[];            // in turn order, clockwise from leader
   winnerId: number | null;  // null until resolve
   fBeatsS: boolean;         // true when the F-vs-S override fired (drives UPSET callout)
+  // Set by any player from their phone once the trick is resolved, to request
+  // the big screen play its cleanup animation and advance. Idempotent (first
+  // tap wins). Absent/false until requested; never carried to the next trick.
+  dismissRequested?: boolean;
 }
 
 // ─── Per-player round state ───────────────────────────────────────────────

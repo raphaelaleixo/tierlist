@@ -25,13 +25,12 @@ import {
 } from '../game/lifecycle';
 import type { GameState } from '../game/types';
 import { writeGameState } from './useGameState';
+import { DISMISS_TOTAL_MS } from '../components/big-screen/BigScreenCardPlay';
 
 // Tunable delays so the big screen can play its animations. Pass B will likely
 // add a dedicated "revealing" intermediate state; for now the driver just waits.
 const CATEGORY_REVEAL_DELAY_MS = 3000; // window for "all categories in" reveal beat
 const TRICK_REVEAL_DELAY_MS = 2400;    // window for per-card flip cinema
-const POST_RESOLVE_DELAY_MS = 6700;    // covers banner reveal + WINNER overlay + migration
-const ROUND_END_DELAY_MS = 2500;       // window for end-of-round transition
 
 export function useGameStateDriver(
   roomId: string | undefined,
@@ -68,15 +67,19 @@ export function useGameStateDriver(
         }, TRICK_REVEAL_DELAY_MS);
         return () => clearTimeout(t);
       }
-      // Resolved → either advance to next trick or end the round
+      // Resolved → wait for a player to dismiss from their phone. No fallback
+      // timer: the WINNER overlay stays up until someone taps "Continue".
+      if (!trick.dismissRequested) return;
+      // Dismissed → let the big screen finish the tuck/slide cleanup, then
+      // advance to the next trick (or transition the round).
       const isLastTrick = round.currentTrickIndex === 4;
       if (!isLastTrick) {
         const t = setTimeout(() => {
           void writeGameState(roomId, advanceAfterTrick(gameState));
-        }, POST_RESOLVE_DELAY_MS);
+        }, DISMISS_TOTAL_MS);
         return () => clearTimeout(t);
       }
-      // Last trick resolved → round complete; either start R2 or end the game
+      // Last trick → round complete; either start R2 or end the game.
       if (isRoundComplete(gameState)) {
         const t = setTimeout(() => {
           if (gameState.currentRoundIndex === 0) {
@@ -84,7 +87,7 @@ export function useGameStateDriver(
           } else {
             void writeGameState(roomId, endGame(gameState));
           }
-        }, ROUND_END_DELAY_MS);
+        }, DISMISS_TOTAL_MS);
         return () => clearTimeout(t);
       }
     }

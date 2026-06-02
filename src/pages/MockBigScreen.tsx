@@ -20,7 +20,7 @@ import {
   advanceAfterTrick,
   startRound2,
   endGame,
-  showFinalScore,
+  showTierReveal,
 } from '../game/lifecycle';
 import BigScreenGame from '../components/BigScreenGame';
 import type { TierRoomState } from '../hooks/useFirebaseRoom';
@@ -282,13 +282,15 @@ const FIXTURES: Record<FixtureKey, { label: string; build: (count: number) => Ga
       return s;
     },
   },
-  'end-reveal': {
-    label: 'End reveal',
-    build: (count) => bootstrapToEndReveal(count),
-  },
+  // New flow: endGame → 'final-score' (rankings first); showTierReveal
+  // advances to 'game-end-reveal' (tier lists).
   'final-score': {
     label: 'Final score',
-    build: (count) => showFinalScore(bootstrapToEndReveal(count)),
+    build: (count) => bootstrapToEndReveal(count),
+  },
+  'end-reveal': {
+    label: 'End reveal',
+    build: (count) => showTierReveal(bootstrapToEndReveal(count)),
   },
 };
 

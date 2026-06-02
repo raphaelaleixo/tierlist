@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
-import { Box, Button } from '@mui/material';
-import { FullscreenToggle, RoomInfoModal } from 'react-gameroom';
+import { Box } from '@mui/material';
+import FullscreenIcon from '@mui/icons-material/Fullscreen';
+import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
+import { RoomInfoModal, useFullscreen } from 'react-gameroom';
 import type { RoomState } from 'react-gameroom';
+import ShinyButton from './ShinyButton';
 
 // Global top bar shared across the big screen, phones, and static pages.
 // Mirrors the structure used in `react-unmatched/src/components/AppHeader.tsx`:
@@ -22,16 +25,21 @@ const CARD_FONT =
 
 export default function AppHeader({ roomCode, roomState, showFullscreen }: Props) {
   const [showInfo, setShowInfo] = useState(false);
+  const { isFullscreen, isSupported: fullscreenSupported, toggle: toggleFullscreen } =
+    useFullscreen();
 
   return (
     <Box
       component="header"
       sx={{
+        // Fixed height so the header is identical across phone + big-screen
+        // surfaces and the body's `flex: 1` math is stable.
+        height: 56,
+        flexShrink: 0,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         px: 2,
-        py: 1,
         borderBottom: '1px solid rgba(255,255,255,0.06)',
         fontFamily: CARD_FONT,
       }}
@@ -54,26 +62,20 @@ export default function AppHeader({ roomCode, roomState, showFullscreen }: Props
 
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         {roomCode && (
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={() => setShowInfo(true)}
-            sx={{
-              fontFamily: CARD_FONT,
-              fontWeight: 700,
-              letterSpacing: 2,
-              minWidth: 0,
-              px: 1.5,
-            }}
-          >
+          <ShinyButton size="small" onClick={() => setShowInfo(true)}>
             {roomCode}
-          </Button>
+          </ShinyButton>
         )}
-        {showFullscreen && (
-          <FullscreenToggle
-            className="app-header__fullscreen"
-            labels={{ enter: 'Fullscreen', exit: 'Exit fullscreen' }}
-          />
+        {showFullscreen && fullscreenSupported && (
+          <ShinyButton
+            size="small"
+            onClick={toggleFullscreen}
+            ariaLabel={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+          >
+            {isFullscreen
+              ? <FullscreenExitIcon sx={{ fontSize: '1.1rem' }} />
+              : <FullscreenIcon sx={{ fontSize: '1.1rem' }} />}
+          </ShinyButton>
         )}
       </Box>
 

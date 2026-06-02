@@ -106,6 +106,7 @@ function hydrateTrick(raw: unknown, fallbackIndex: number): Trick {
     plays: playsArr,
     winnerId: typeof r.winnerId === 'number' ? r.winnerId : null,
     fBeatsS: r.fBeatsS === true,
+    dismissRequested: r.dismissRequested === true,
   };
 }
 

@@ -22,6 +22,7 @@ import {
   currentTurnPlayerId,
   isCurrentTrickComplete,
   playCard,
+  requestTrickDismiss,
   writerOf,
 } from '../../game/lifecycle';
 import { writeGameState } from '../../hooks/useGameState';
@@ -34,6 +35,11 @@ import type { PlayerMeta } from '../big-screen/playerMeta';
 
 const CARD_FONT =
   '"Bricolage Grotesque", -apple-system, "Helvetica Neue", "Segoe UI", system-ui, sans-serif';
+
+// Fixed card width (px) so the hand looks the same on every phone, regardless
+// of viewport width. The carousel centres cards and pads its ends by half the
+// leftover width so the first/last card can still sit centred.
+const CARD_WIDTH = 230;
 
 interface Props {
   roomId: string;
@@ -153,6 +159,15 @@ export default function PhoneCardPlay({ roomId, gameState, myId, meta }: Props) 
     }
   }
 
+  // Any player can advance a resolved trick. The write is idempotent (first
+  // tap flips the flag; the big screen plays its cleanup and the driver
+  // commits the advance), so concurrent taps are harmless.
+  const dismissRequested = !!trick.dismissRequested;
+  async function handleDismiss() {
+    if (!trickResolved || dismissRequested) return;
+    await writeGameState(roomId, requestTrickDismiss(gameState));
+  }
+
   // Status banner copy + colour.
   const status = computeStatus({
     trickResolved,
@@ -178,25 +193,9 @@ export default function PhoneCardPlay({ roomId, gameState, myId, meta }: Props) 
       {/* Top section — text + status, constrained to xs width. */}
       <Container maxWidth="xs" sx={{ pt: 2 }}>
         <Stack spacing={2}>
-          {/* Header: round / trick + fire-point count */}
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}
-          >
-            <Box
-              sx={{
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                letterSpacing: 2,
-                textTransform: 'uppercase',
-                color: 'rgba(255,255,255,0.6)',
-              }}
-            >
-              Round {round.number} · Trick {round.currentTrickIndex + 1}/5
-            </Box>
+          {/* Header: fire-point count. Round + turn now live in the black
+              footer bar at the bottom (mimicking the big screen). */}
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
               <OpenMojiIcon emoji="🔥" variant="color" size="1.3rem" />
               <Box sx={{ fontWeight: 900, fontSize: '1.1rem' }}>×{myHearts}</Box>
@@ -239,27 +238,6 @@ export default function PhoneCardPlay({ roomId, gameState, myId, meta }: Props) 
               </Box>
             )}
           </Box>
-
-          {/* Status banner */}
-          <Box sx={{ textAlign: 'center', minHeight: '1.6rem' }}>
-            <Box
-              sx={{
-                fontWeight: 900,
-                fontSize: '1.25rem',
-                textTransform: 'uppercase',
-                color: status.color,
-                ...(status.pulse && {
-                  animation: 'turnPulse 700ms ease-in-out infinite alternate',
-                  '@keyframes turnPulse': {
-                    from: { color: '#ffce1c' },
-                    to: { color: '#fff5b0' },
-                  },
-                }),
-              }}
-            >
-              {status.title}
-            </Box>
-          </Box>
         </Stack>
       </Container>
 
@@ -282,20 +260,21 @@ export default function PhoneCardPlay({ roomId, gameState, myId, meta }: Props) 
         <SortableContext items={orderedIds} strategy={horizontalListSortingStrategy}>
           <Box
             sx={{
-              flex: 1,
-              minHeight: 0,
+              // Cards are a fixed size, so the carousel just hugs their height
+              // instead of stretching to fill the column (no flex: 1).
+              flexShrink: 0,
               display: 'flex',
               alignItems: 'center',
               overflowX: 'auto',
               overflowY: 'hidden',
               overscrollBehaviorX: 'contain',
               scrollSnapType: 'x mandatory',
-              px: 'calc((100% - 60%) / 2)',
-              scrollPaddingInline: 'calc((100% - 60%) / 2)',
+              px: `max(0px, calc((100% - ${CARD_WIDTH}px) / 2))`,
+              scrollPaddingInline: `max(0px, calc((100% - ${CARD_WIDTH}px) / 2))`,
               gap: 1.5,
               '&::-webkit-scrollbar': { display: 'none' },
               scrollbarWidth: 'none',
-              py: 1,
+              py: 4.5,
             }}
           >
             {orderedHand.map((card) => (
@@ -321,28 +300,98 @@ export default function PhoneCardPlay({ roomId, gameState, myId, meta }: Props) 
         </SortableContext>
       </DndContext>
 
-      {/* CTA — back inside the constrained Container. */}
-      <Container maxWidth="xs" sx={{ pb: 2 }}>
-        <ShinyButton
-          accent={myColor}
-          variant="primary"
-          fullWidth
-          disabled={!canPlay}
-          onClick={() => void handlePlay()}
-        >
-          <Box
-            sx={{
-              fontFamily: CARD_FONT,
-              fontWeight: 900,
-              fontSize: '1rem',
-              letterSpacing: 2,
-              textTransform: 'uppercase',
-            }}
+      {/* CTA — back inside the constrained Container. Once the trick is
+          resolved the CTA becomes a shared "Continue" that any player can tap
+          to dismiss the result and advance. `mt: auto` pins the CTA + footer
+          to the bottom of the column (the carousel no longer stretches). */}
+      <Container maxWidth="xs" sx={{ pb: 2, mt: 'auto' }}>
+        {trickResolved ? (
+          <ShinyButton
+            accent={myColor}
+            variant="primary"
+            fullWidth
+            disabled={dismissRequested}
+            onClick={() => void handleDismiss()}
           >
-            {selectedCard ? `Play ${selectedCard.item}` : isMyTurn ? 'Pick a card' : 'Waiting'}
-          </Box>
-        </ShinyButton>
+            <Box
+              sx={{
+                fontFamily: CARD_FONT,
+                fontWeight: 900,
+                fontSize: '1rem',
+                letterSpacing: 2,
+                textTransform: 'uppercase',
+              }}
+            >
+              {dismissRequested ? 'Continuing…' : 'Continue'}
+            </Box>
+          </ShinyButton>
+        ) : (
+          <ShinyButton
+            accent={myColor}
+            variant="primary"
+            fullWidth
+            disabled={!canPlay}
+            onClick={() => void handlePlay()}
+          >
+            <Box
+              sx={{
+                fontFamily: CARD_FONT,
+                fontWeight: 900,
+                fontSize: '1rem',
+                letterSpacing: 2,
+                textTransform: 'uppercase',
+              }}
+            >
+              {selectedCard ? 'Play' : isMyTurn ? 'Pick a card' : 'Waiting'}
+            </Box>
+          </ShinyButton>
+        )}
       </Container>
+
+      {/* Black footer bar — turn / result on top, round indicator below,
+          stacked and centred, mimicking the big screen's bottom strip. */}
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 0.25,
+          px: 2.5,
+          py: 1.25,
+          bgcolor: '#0a0a12',
+          borderTop: '1px solid rgba(255,255,255,0.08)',
+        }}
+      >
+        <Box
+          sx={{
+            fontSize: '0.95rem',
+            fontWeight: 900,
+            letterSpacing: 1,
+            textTransform: 'uppercase',
+            color: status.color,
+            ...(status.pulse && {
+              animation: 'turnPulse 700ms ease-in-out infinite alternate',
+              '@keyframes turnPulse': {
+                from: { color: '#ffce1c' },
+                to: { color: '#fff5b0' },
+              },
+            }),
+          }}
+        >
+          {status.title}
+        </Box>
+        <Box
+          sx={{
+            fontSize: '0.7rem',
+            fontWeight: 700,
+            letterSpacing: 2,
+            textTransform: 'uppercase',
+            color: 'rgba(255,255,255,0.6)',
+          }}
+        >
+          Round {round.number} · Trick {round.currentTrickIndex + 1}/5
+        </Box>
+      </Box>
     </Box>
   );
 }
@@ -406,7 +455,7 @@ function SortableCard({
         onTap();
       }}
       sx={{
-        flex: '0 0 60%',
+        flex: `0 0 ${CARD_WIDTH}px`,
         aspectRatio: '5/7',
         scrollSnapAlign: 'center',
         position: 'relative',

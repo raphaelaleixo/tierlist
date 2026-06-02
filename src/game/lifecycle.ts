@@ -278,6 +278,21 @@ export function advanceAfterTrick(state: GameState): GameState {
   });
 }
 
+// Any player can request dismissal of the resolved trick from their phone.
+// Idempotent: only the first request flips the flag; later taps are no-ops.
+// The big screen reacts to the flag (plays its cleanup) and the driver then
+// commits advanceAfterTrick / the round transition.
+export function requestTrickDismiss(state: GameState): GameState {
+  return withCurrentRound(state, (r) => {
+    const idx = r.currentTrickIndex;
+    const trick = r.tricks[idx];
+    if (trick.winnerId === null || trick.dismissRequested) return r;
+    const tricks = [...r.tricks];
+    tricks[idx] = { ...trick, dismissRequested: true };
+    return { ...r, tricks };
+  });
+}
+
 export function isRoundComplete(state: GameState): boolean {
   const r = currentRound(state);
   return r.tricks.length === 5 && r.tricks.every((t) => t.winnerId !== null);
@@ -299,10 +314,14 @@ export function startRound2(state: GameState): GameState {
 
 // ─── End game ─────────────────────────────────────────────────────────────
 
+// End-game flow: final-score (rankings, winner spotlight) is shown FIRST,
+// then advances to game-end-reveal (every tier list incl. mystery cards).
+// The big-screen final score has a "See tier lists" CTA that calls
+// showTierReveal to advance.
 export function endGame(state: GameState): GameState {
-  return { ...state, phase: 'game-end-reveal' };
+  return { ...state, phase: 'final-score' };
 }
 
-export function showFinalScore(state: GameState): GameState {
-  return { ...state, phase: 'final-score' };
+export function showTierReveal(state: GameState): GameState {
+  return { ...state, phase: 'game-end-reveal' };
 }

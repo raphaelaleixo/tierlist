@@ -14,9 +14,10 @@ import {
   advanceAfterTrick,
   startRound2,
   endGame,
-  showFinalScore,
+  showTierReveal,
 } from '../game/lifecycle';
 import PhoneGame from '../components/PhoneGame';
+import AppHeader from '../components/AppHeader';
 import type { TierRoomState } from '../hooks/useFirebaseRoom';
 
 const IDENTITY_SHUFFLE = <T,>(arr: T[]): T[] => [...arr];
@@ -145,8 +146,10 @@ const FIXTURES: Record<FixtureKey, { label: string; build: () => GameState }> = 
       return resolveCurrentTrick(s);
     },
   },
-  'end-reveal': { label: 'End reveal', build: () => fullToEndGame() },
-  'final-score': { label: 'Final score', build: () => showFinalScore(fullToEndGame()) },
+  // New flow: endGame → 'final-score' (rankings first); showTierReveal
+  // advances to 'game-end-reveal' (tier lists).
+  'final-score': { label: 'Final score', build: () => fullToEndGame() },
+  'end-reveal': { label: 'End reveal', build: () => showTierReveal(fullToEndGame()) },
 };
 
 export default function MockPlayerPhone() {
@@ -213,6 +216,9 @@ export default function MockPlayerPhone() {
         maxWidth="xs"
         sx={{ mx: 'auto', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
       >
+        {/* AppHeader now lives outside PhoneGame (rendered by the caller), so
+            the mock adds it here to match the real player layout. */}
+        <AppHeader roomCode={room.roomId} roomState={room} />
         <PhoneGame roomId={room.roomId} roomState={room} gameState={gameState} myId={seatId} />
       </Container>
     </Box>

@@ -295,10 +295,10 @@ describe('startRound2', () => {
 });
 
 describe('endGame', () => {
-  it('moves top-level phase to game-end-reveal', () => {
+  it('moves top-level phase to final-score (rankings are shown before tier reveal)', () => {
     let s = bootstrapToCardPlay();
     s = endGame(s);
-    expect(s.phase).toBe('game-end-reveal');
+    expect(s.phase).toBe('final-score');
   });
 });
 

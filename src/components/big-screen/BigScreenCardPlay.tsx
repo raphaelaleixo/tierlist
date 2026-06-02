@@ -20,7 +20,9 @@ interface Props {
 
 const DISMISS_TUCK_MS = 350;
 const DISMISS_SLIDE_MS = 450;
-const DISMISS_TOTAL_MS = DISMISS_TUCK_MS + DISMISS_SLIDE_MS;
+// Exported so the driver can wait exactly this long after a dismiss is
+// requested before committing the trick advance (cards finish sliding off).
+export const DISMISS_TOTAL_MS = DISMISS_TUCK_MS + DISMISS_SLIDE_MS;
 
 export default function BigScreenCardPlay({ gameState, round, meta, onDismiss }: Props) {
   const trick = round.tricks[round.currentTrickIndex];
@@ -29,19 +31,22 @@ export default function BigScreenCardPlay({ gameState, round, meta, onDismiss }:
   const currentPlayByPlayer = new Map<number, Play>();
   for (const p of trick.plays) currentPlayByPlayer.set(p.playerId, p);
 
-  // Mock-only dismissal: click anywhere on the big screen once a winner is
-  // resolved to play the exit animation, then advance via onDismiss.
-  const [dismissing, setDismissing] = useState(false);
-  const canDismiss = !!onDismiss && trick.winnerId !== null && !dismissing;
+  // Dismissal drives the exit animation (losing cards tuck under the winner,
+  // then slide off). Two trigger paths:
+  //   • Live game: any player taps "Continue" on their phone, which sets
+  //     `trick.dismissRequested` in shared state — we derive `dismissing`
+  //     straight from that flag.
+  //   • Mock: click anywhere on the big screen (local state), since there's
+  //     no phone wired up.
+  const [dismissingLocal, setDismissingLocal] = useState(false);
+  const dismissing = onDismiss ? dismissingLocal : !!trick.dismissRequested;
+  const canDismiss = !!onDismiss && trick.winnerId !== null && !dismissingLocal;
   const handleDismissClick = () => {
     if (!canDismiss) return;
-    setDismissing(true);
-    // Hide the spotlight overlay so it slides back down via its existing
-    // transition while the losing cards tuck under the winner.
-    setWinnerSpotlight(false);
+    setDismissingLocal(true);
     window.setTimeout(() => {
       onDismiss?.();
-      setDismissing(false);
+      setDismissingLocal(false);
     }, DISMISS_TOTAL_MS);
   };
 
@@ -61,15 +66,18 @@ export default function BigScreenCardPlay({ gameState, round, meta, onDismiss }:
     if (wid === lastWinnerRef.current) return;
     lastWinnerRef.current = wid;
     if (wid === null) {
+      // Reset per-trick UI state when the trick advances — a legitimate sync
+      // from the resolved-trick prop, not a cascading render.
+      /* eslint-disable react-hooks/set-state-in-effect */
       setWinnerSpotlight(false);
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPointsLit(true);
+      /* eslint-enable react-hooks/set-state-in-effect */
       return;
     }
     setPointsLit(false);
-    // Spotlight stays on until the trick advances (dismissal). Points get
-    // marked lit shortly after the spotlight appears so the new fire is
-    // already visible under the overlay if it ever clears.
+    // Spotlight stays on until the trick is dismissed. Points get marked lit
+    // shortly after the spotlight appears so the new fire is already visible
+    // under the overlay if it ever clears.
     const showT = window.setTimeout(() => setWinnerSpotlight(true), 1000);
     const litT = window.setTimeout(() => setPointsLit(true), 1400);
     return () => {
@@ -77,6 +85,11 @@ export default function BigScreenCardPlay({ gameState, round, meta, onDismiss }:
       clearTimeout(litT);
     };
   }, [trick.winnerId]);
+
+  // The spotlight overlay should slide away the moment dismissal begins (the
+  // cards tuck/slide underneath it), so derive its visibility rather than
+  // toggling it imperatively from each dismiss path.
+  const showSpotlight = winnerSpotlight && !dismissing;
 
   // While the winner overlay is covering them, show the OLD heart count
   // (subtract the freshly-awarded trick point). When `pointsLit` flips true
@@ -152,7 +165,7 @@ export default function BigScreenCardPlay({ gameState, round, meta, onDismiss }:
               currentPlay={play}
               isCurrentTurn={turnPlayerId === pid}
               isWinnerOfTrick={trick.winnerId === pid}
-              winnerSpotlight={winnerSpotlight}
+              winnerSpotlight={showSpotlight}
               winReason={winReason}
               hasPlayedCurrentTrick={currentPlayByPlayer.has(pid)}
               allMeta={meta}

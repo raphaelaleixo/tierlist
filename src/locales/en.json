@@ -11,6 +11,7 @@
     "back": "Back"
   },
   "lobby": {
+    "roomLabel": "Room",
     "scanHint": "Scan to join, or visit this room code on your phone.",
     "playerCount": "{{count}} / {{max}} players  ·  min {{min}}",
     "start": "Start Game",

@@ -11,6 +11,8 @@ interface Props {
   /** `primary` = dark face (the default look).
    *  `secondary` = accent-tinted face (use for accenting / CTAs). */
   variant?: 'primary' | 'secondary';
+  /** `normal` = body CTAs.  `small` = compact header / chip-sized buttons. */
+  size?: 'normal' | 'small';
   onClick?: () => void;
   disabled?: boolean;
   fullWidth?: boolean;
@@ -24,12 +26,14 @@ const CARD_FONT =
 export default function ShinyButton({
   accent = '#ffffff',
   variant = 'primary',
+  size = 'normal',
   onClick,
   disabled,
   fullWidth,
   ariaLabel,
   children,
 }: Props) {
+  const small = size === 'small';
   // Convert hex to rgb so we can build matching alpha-tinted backgrounds and
   // shadow colours without parsing in the sx callbacks.
   const rgb = hexToRgb(accent);
@@ -47,8 +51,8 @@ export default function ShinyButton({
         boxSizing: 'border-box',
         display: fullWidth ? 'block' : 'inline-block',
         width: fullWidth ? '100%' : 'auto',
-        p: '2px',
-        borderRadius: '15px',
+        p: small ? '1.5px' : '2px',
+        borderRadius: small ? '11px' : '15px',
         cursor: disabled ? 'default' : 'pointer',
         transition: 'background-color 200ms ease, box-shadow 200ms ease',
         background: `linear-gradient(to bottom right, ${accent} 0%, ${tint(0)} 30%)`,
@@ -65,7 +69,7 @@ export default function ShinyButton({
     >
       <Box
         sx={{
-          borderRadius: '13px',
+          borderRadius: small ? '9.5px' : '13px',
           // secondary face: accent mixed toward dark so it sits noticeably
           // darker than the bright outer-ring shine. Primary is plain dark.
           bgcolor: variant === 'secondary' ? pastelOnDark(accent, 0.35) : '#1a1a1a',
@@ -76,9 +80,11 @@ export default function ShinyButton({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: 1.5,
-          px: 2.5,
-          py: 1.5,
+          gap: small ? 0.75 : 1.5,
+          px: small ? 1.25 : 2.5,
+          py: small ? 0.4 : 1.5,
+          fontSize: small ? '0.7rem' : undefined,
+          letterSpacing: small ? 1.5 : undefined,
         }}
       >
         {children}
