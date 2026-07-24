@@ -49,5 +49,11 @@
     "typescript-eslint": "^8.58.0",
     "vite": "^8.0.4",
     "vitest": "^4.1.4"
+  },
+  "overrides": {
+    "@emoji-mart/react": {
+      "react": "$react",
+      "react-dom": "$react-dom"
+    }
   }
 }
