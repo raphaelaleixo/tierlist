@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Box } from '@mui/material';
 import type { GameState, Play, Round } from '../../game/types';
 import { currentTurnPlayerId } from '../../game/lifecycle';
+import PhaseIntroBanner from './PhaseIntroBanner';
 import PlayerCell from './PlayerCell';
 import type { PlayerMeta } from './playerMeta';
 
@@ -197,6 +198,11 @@ export default function BigScreenCardPlay({ gameState, round, meta, onDismiss }:
       >
         Round {round.number} / Trick {round.currentTrickIndex + 1}
       </Box>
+
+      <PhaseIntroBanner
+        title="Play your cards"
+        subtitle="Highest tier wins the trick — F-bomb beats S."
+      />
     </Box>
   );
 }

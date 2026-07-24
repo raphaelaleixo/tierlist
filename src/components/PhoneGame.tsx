@@ -1,3 +1,4 @@
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Box, Typography } from '@mui/material';
 import type { TierRoomState } from '../hooks/useFirebaseRoom';
 import type { GameState } from '../game/types';
@@ -54,14 +55,94 @@ export default function PhoneGame({ roomId, roomState, gameState, myId }: Props)
     body = <PhoneWaiting />;
   }
 
+  // Phase key — changes whenever the visible body should swap. Drives the
+  // PhonePhaseTransition orchestrator so each phase swap plays a
+  // slide-up exit + slide-from-bottom enter on the body.
+  const phaseKey = (() => {
+    if (gameState.phase === 'game-end-reveal' || gameState.phase === 'final-score') {
+      return 'end-game';
+    }
+    if (gameState.phase === 'in-round') {
+      const round = gameState.rounds[gameState.currentRoundIndex];
+      if (!round) return 'loading';
+      return `r${round.number}-${round.phase}`;
+    }
+    return 'waiting';
+  })();
+
   // PhoneGame is the phase body only — the AppHeader is now rendered by the
   // caller (PlayerPage via PlayerScreen's renderHeader; the mock above the
   // dev toolbar). We fill the parent as a flex:1 column so a phase's outer
   // `min-height: 100%` resolves against a definite height. Callers must
   // mount us inside a flex column with a definite height.
+  return <PhonePhaseTransition phaseKey={phaseKey} body={body} />;
+}
+
+// Phone-side analogue of BigScreenGame's PhaseTransition. The phone has a
+// single body (no row of cells), so the WHOLE body slides up as it exits
+// and the new body slides in from below — no per-cell stagger needed.
+// Sequential: incoming only mounts after outgoing finishes, matching the
+// big-screen behaviour.
+const PHONE_EXIT_MS = 380;
+const PHONE_ENTER_MS = 440;
+
+function PhonePhaseTransition({ phaseKey, body }: { phaseKey: string; body: ReactNode }) {
+  const [outgoing, setOutgoing] = useState<{ key: string; body: ReactNode } | null>(null);
+  const lastKeyRef = useRef(phaseKey);
+  const lastBodyRef = useRef<ReactNode>(body);
+
+  useLayoutEffect(() => {
+    if (lastKeyRef.current !== phaseKey) {
+      setOutgoing({ key: lastKeyRef.current, body: lastBodyRef.current });
+      lastKeyRef.current = phaseKey;
+    }
+    lastBodyRef.current = body;
+  }, [phaseKey, body]);
+
+  useEffect(() => {
+    if (!outgoing) return;
+    const t = window.setTimeout(() => setOutgoing(null), PHONE_EXIT_MS + 60);
+    return () => clearTimeout(t);
+  }, [outgoing]);
+
   return (
-    <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-      {body}
+    <Box sx={{ flex: 1, minHeight: 0, position: 'relative', display: 'flex', flexDirection: 'column' }}>
+      {outgoing ? (
+        <Box
+          key={outgoing.key}
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            pointerEvents: 'none',
+            animation: `phoneExit ${PHONE_EXIT_MS}ms cubic-bezier(0.5, 0, 0.75, 0) forwards`,
+            '@keyframes phoneExit': {
+              from: { transform: 'translateY(0)', opacity: 1 },
+              to: { transform: 'translateY(-100%)', opacity: 0 },
+            },
+          }}
+        >
+          {outgoing.body}
+        </Box>
+      ) : (
+        <Box
+          key={phaseKey}
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            animation: `phoneEnter ${PHONE_ENTER_MS}ms cubic-bezier(0.22, 1, 0.36, 1) backwards`,
+            '@keyframes phoneEnter': {
+              from: { transform: 'translateY(100%)', opacity: 0 },
+              to: { transform: 'translateY(0)', opacity: 1 },
+            },
+          }}
+        >
+          {body}
+        </Box>
+      )}
     </Box>
   );
 }

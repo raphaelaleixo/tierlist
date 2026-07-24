@@ -25,6 +25,9 @@ interface Props {
   size?: number | string;
   /** Only meaningful for the black variant — flips black→white on dark bgs. */
   invert?: boolean;
+  /** Tint the black SVG with a CSS colour (uses mask-image). Overrides
+   *  `invert` when set. No-op for the colour variant. */
+  tint?: string;
   variant?: 'black' | 'color';
   sx?: import('@mui/material').BoxProps['sx'];
 }
@@ -38,6 +41,7 @@ export default function OpenMojiIcon({
   emoji,
   size = '1em',
   invert = false,
+  tint,
   variant = 'black',
   sx,
 }: Props) {
@@ -89,6 +93,36 @@ export default function OpenMojiIcon({
   // the local codepoint computation (good enough for most simple emojis;
   // the onError handler covers ZWJ edge cases until the Map populates).
   const src = hexcode ? `${BLACK_BASE}/${hexcode}.svg` : openMojiBlackUrl(emoji);
+
+  // Tinted: render as a CSS mask so any colour can fill the silhouette.
+  // No <img> means no onError fallback — relies on the upstream picker
+  // already filtering to OpenMoji-supported emoji.
+  if (tint) {
+    return (
+      <Box
+        aria-label={emoji}
+        role="img"
+        sx={{
+          width: size,
+          height: size,
+          display: 'inline-block',
+          verticalAlign: '-0.15em',
+          userSelect: 'none',
+          backgroundColor: tint,
+          WebkitMaskImage: `url(${src})`,
+          maskImage: `url(${src})`,
+          WebkitMaskRepeat: 'no-repeat',
+          maskRepeat: 'no-repeat',
+          WebkitMaskSize: 'contain',
+          maskSize: 'contain',
+          WebkitMaskPosition: 'center',
+          maskPosition: 'center',
+          ...sx,
+        }}
+      />
+    );
+  }
+
   const filter = invert ? 'invert(1)' : 'none';
 
   return (

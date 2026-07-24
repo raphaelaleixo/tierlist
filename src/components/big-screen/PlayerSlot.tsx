@@ -1,6 +1,7 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useContext, useEffect, useState, type ReactNode } from 'react';
 import { Box } from '@mui/material';
 import { pastelOnDark } from '../../utils/blob';
+import { CELL_EXIT_DURATION_MS, PhaseExitContext } from './phaseTransition';
 import type { PlayerMeta } from './playerMeta';
 
 // Shared cell shell used by cat-pick, tier-writing, and card-play. All three
@@ -30,9 +31,29 @@ export interface PlayerSlotProps {
   /** Extra content rendered as a sibling of the row slots (typically
    *  absolutely-positioned overlays — e.g. the WINNER banner on card-play). */
   children?: ReactNode;
+  /** Staggered enter delay (ms). Cell slides up from below with this delay
+   *  on mount so a row of cells cascades in. Used by the phase-transition
+   *  effect — the banner masks open while cells settle into place. */
+  enterDelayMs?: number;
 }
 
-export default function PlayerSlot({ meta, ready, top, middle, bottom, children }: PlayerSlotProps) {
+// Enter / exit animations shared across all big-screen player cells.
+// `backwards` fill on enter keeps the cell at the `from` state during the
+// stagger delay so it doesn't flash visible early. `forwards` fill on exit
+// holds the cell in the off-screen `to` state until it unmounts.
+const CELL_ANIM_KEYFRAMES = {
+  '@keyframes cellEnter': {
+    from: { transform: 'translateY(60%)', opacity: 0 },
+    to: { transform: 'translateY(0)', opacity: 1 },
+  },
+  '@keyframes cellExit': {
+    from: { transform: 'translateY(0)', opacity: 1 },
+    to: { transform: 'translateY(-110%)', opacity: 0 },
+  },
+} as const;
+
+export default function PlayerSlot({ meta, ready, top, middle, bottom, children, enterDelayMs = 0 }: PlayerSlotProps) {
+  const isExiting = useContext(PhaseExitContext);
   // Start each cell at "ready" on mount so a freshly entered phase visibly
   // animates the dark veil in (or out). Without this, switching from
   // cat-pick (all ready) to tier-writing (none submitted) would snap dark
@@ -84,6 +105,11 @@ export default function PlayerSlot({ meta, ready, top, middle, bottom, children 
         },
         containerType: 'inline-size',
         position: 'relative',
+        animation: isExiting
+          ? `cellExit ${CELL_EXIT_DURATION_MS}ms cubic-bezier(0.5, 0, 0.75, 0) forwards`
+          : 'cellEnter 520ms cubic-bezier(0.22, 1, 0.36, 1) backwards',
+        animationDelay: `${enterDelayMs}ms`,
+        ...CELL_ANIM_KEYFRAMES,
       }}
     >
       <Box sx={{ alignSelf: 'start', width: '100%' }}>{top}</Box>

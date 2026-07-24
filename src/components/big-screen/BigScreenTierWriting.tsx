@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
 import { Box } from '@mui/material';
 import type { GameState, Round } from '../../game/types';
-import { allTierListsSubmitted } from '../../game/lifecycle';
 import { pastelOnDark } from '../../utils/blob';
+import PhaseIntroBanner from './PhaseIntroBanner';
 import PlayerSlot, { PlayerNameLine } from './PlayerSlot';
+import { CELL_STAGGER_MS } from './phaseTransition';
 import type { PlayerMeta } from './playerMeta';
 
 // Phase 2: each player writes the tier list for the category their neighbour
@@ -27,16 +27,6 @@ export default function BigScreenTierWriting({ gameState, round, meta }: Props) 
   const readyCount = gameState.seating.filter(
     (pid) => round.perPlayer[pid]?.tierListWritten !== null,
   ).length;
-  const allReady = allTierListsSubmitted(round);
-
-  // Banner masks open from the middle, but only AFTER the cell darkening
-  // has had a moment to play (so the phase transition reads as "cells dim
-  // first, then banner reveals").
-  const [open, setOpen] = useState(false);
-  useEffect(() => {
-    const t = window.setTimeout(() => setOpen(true), 900);
-    return () => clearTimeout(t);
-  }, []);
 
   return (
     <Box
@@ -62,66 +52,18 @@ export default function BigScreenTierWriting({ gameState, round, meta }: Props) 
           },
         }}
       >
-        {gameState.seating.map((pid) => {
+        {gameState.seating.map((pid, idx) => {
           const m = meta[pid];
           if (!m) return null;
           const submitted = round.perPlayer[pid]?.tierListWritten !== null;
-          return <WriteCell key={pid} meta={m} submitted={submitted} />;
+          return <WriteCell key={pid} meta={m} submitted={submitted} cellIndex={idx} />;
         })}
       </Box>
 
-      {/* Full-width banner — masks open from the middle on mount, masks
-          closed once every player has submitted. */}
-      <Box
-        sx={{
-          position: 'fixed',
-          left: 0,
-          right: 0,
-          top: '50%',
-          transform: allReady
-            ? 'translateY(calc(-50% - 100vh))'
-            : 'translateY(-50%)',
-          clipPath: open ? 'inset(0 0 0 0)' : 'inset(0 50% 0 50%)',
-          transition:
-            'clip-path 500ms cubic-bezier(0.22, 1, 0.36, 1), transform 600ms cubic-bezier(0.5, 0, 0.75, 0)',
-          bgcolor: 'rgba(15,15,22,0.92)',
-          fontFamily: CARD_FONT,
-          py: 4,
-          px: 3,
-          textAlign: 'center',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: 1.5,
-          pointerEvents: 'none',
-        }}
-      >
-        <Box
-          sx={{
-            fontWeight: 900,
-            fontSize: { xs: '2.5rem', md: '4rem' },
-            textTransform: 'uppercase',
-            lineHeight: 1,
-            animation: 'writePulse 700ms ease-in-out infinite alternate',
-            '@keyframes writePulse': {
-              from: { color: '#ffce1c' },
-              to: { color: '#fff5b0' },
-            },
-          }}
-        >
-          Fill the tier list
-        </Box>
-        <Box
-          sx={{
-            fontWeight: 500,
-            fontSize: '1rem',
-            color: 'rgba(255,255,255,0.85)',
-            lineHeight: 1.2,
-          }}
-        >
-          Write a tier list for the category your neighbour picked for you.
-        </Box>
-      </Box>
+      <PhaseIntroBanner
+        title="Fill the tier list"
+        subtitle="Write a tier list for the category your neighbour picked for you."
+      />
 
       <Box
         sx={{
@@ -147,13 +89,15 @@ export default function BigScreenTierWriting({ gameState, round, meta }: Props) 
 interface CellProps {
   meta: PlayerMeta;
   submitted: boolean;
+  cellIndex: number;
 }
 
-function WriteCell({ meta, submitted }: CellProps) {
+function WriteCell({ meta, submitted, cellIndex }: CellProps) {
   return (
     <PlayerSlot
       meta={meta}
       ready={submitted}
+      enterDelayMs={cellIndex * CELL_STAGGER_MS}
       top={<PlayerNameLine name={meta.name} />}
       bottom={<StatusLine ready={submitted} colorHex={meta.colorHex} label={submitted ? 'Done' : 'Writing'} />}
     />

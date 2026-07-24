@@ -2,12 +2,17 @@ import { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { PlayerScreen } from 'react-gameroom';
-import { Box, CircularProgress, Container, GlobalStyles, Stack, Typography } from '@mui/material';
+import { Box, CircularProgress, GlobalStyles, Stack } from '@mui/material';
+import Logo from '../components/Logo';
 import { useFirebaseRoom } from '../hooks/useFirebaseRoom';
 import { useGameState } from '../hooks/useGameState';
 import PhoneGame from '../components/PhoneGame';
 import AppHeader from '../components/AppHeader';
 import { PLAYER_COLOR_HEX } from '../theme/theme';
+import { pastelOnDark } from '../utils/blob';
+
+const CARD_FONT =
+  '"Bricolage Grotesque", -apple-system, "Helvetica Neue", "Segoe UI", system-ui, sans-serif';
 
 // PlayerScreen renders `<div className>{header}{body}</div>`. We make that
 // div a full-height flex column so the AppHeader (header) takes its natural
@@ -57,18 +62,34 @@ export default function PlayerPage() {
 
   if (loading) {
     return (
-      <Container sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <Box sx={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'background.default' }}>
         <CircularProgress />
-      </Container>
+      </Box>
     );
   }
 
   if (!roomState) {
     return (
-      <Container maxWidth="sm" sx={{ py: 8, textAlign: 'center' }}>
-        <Typography variant="h5" sx={{ mb: 2 }}>{t('lobby.roomNotFound')}</Typography>
-        <Typography color="text.secondary">{t('lobby.roomNotFoundSubtitle')}</Typography>
-      </Container>
+      <Box
+        sx={{
+          minHeight: '100dvh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          textAlign: 'center',
+          gap: 2,
+          px: 3,
+          fontFamily: CARD_FONT,
+          background: 'radial-gradient(120% 70% at 50% -10%, #17172e 0%, #0a0a14 60%)',
+        }}
+      >
+        <Logo size={30} />
+        <Box sx={{ fontFamily: CARD_FONT, fontWeight: 900, fontSize: '1.6rem', mt: 1 }}>
+          {t('lobby.roomNotFound')}
+        </Box>
+        <Box sx={{ color: 'text.secondary', maxWidth: '34ch' }}>{t('lobby.roomNotFoundSubtitle')}</Box>
+      </Box>
     );
   }
 
@@ -85,12 +106,11 @@ export default function PlayerPage() {
         playerId={playerId}
         // Render OUR chrome through the header slot so it shows consistently
         // across every player state (joining / ready / started).
-        renderHeader={() => (
-          <AppHeader roomCode={roomState.roomId} roomState={roomState} />
-        )}
+        // Players are already seated — the room-code chip + rejoin/QR modal are
+        // a big-screen/host tool, so the player header is just the brand.
+        renderHeader={() => <AppHeader />}
         renderReady={() => (
-          <Container
-            maxWidth="xs"
+          <Box
             sx={{
               flex: 1,
               minHeight: 0,
@@ -99,24 +119,72 @@ export default function PlayerPage() {
               alignItems: 'center',
               justifyContent: 'center',
               textAlign: 'center',
+              px: 3,
+              // Colour-tinted glow — continuity with the join screen.
+              background: `radial-gradient(120% 60% at 50% 0%, ${pastelOnDark(colorHex, 0.32)} 0%, transparent 60%)`,
             }}
           >
-            <Stack spacing={3} sx={{ alignItems: 'center' }}>
+            <Stack spacing={2.5} sx={{ alignItems: 'stretch', width: '100%', maxWidth: 340 }}>
+              {/* Identity card — the "locked content" of this wait, mirroring
+                  the join preview and the post-submit category card. */}
               <Box
                 sx={{
-                  width: 88,
-                  height: 88,
-                  borderRadius: '50%',
-                  bgcolor: colorHex,
-                  boxShadow: `0 0 32px ${colorHex}99`,
+                  borderRadius: '18px',
+                  px: 3,
+                  py: 3,
+                  border: '1px solid rgba(255,255,255,0.14)',
+                  background: `linear-gradient(to bottom, ${pastelOnDark(colorHex, 0.42)} 0%, ${pastelOnDark(colorHex, 0.16)} 100%)`,
                 }}
-              />
-              <Typography variant="h4" sx={{ color: colorHex }}>
-                {t('player.ready')}
-              </Typography>
-              <Typography color="text.secondary">{t('player.waiting')}</Typography>
+              >
+                <Box
+                  sx={{
+                    fontFamily: CARD_FONT,
+                    fontWeight: 900,
+                    fontSize: '2rem',
+                    lineHeight: 1.05,
+                    textTransform: 'uppercase',
+                    wordBreak: 'break-word',
+                    color: 'text.primary',
+                  }}
+                >
+                  {slot?.name}
+                </Box>
+                <Box
+                  sx={{
+                    mt: 0.75,
+                    fontFamily: CARD_FONT,
+                    fontWeight: 700,
+                    fontSize: '0.7rem',
+                    letterSpacing: '0.16em',
+                    textTransform: 'uppercase',
+                    color: 'rgba(255,255,255,0.75)',
+                  }}
+                >
+                  {t('player.youreIn')}
+                </Box>
+              </Box>
+
+              {/* Waiting idiom — blinking uppercase label. */}
+              <Box
+                sx={{
+                  fontFamily: CARD_FONT,
+                  fontWeight: 800,
+                  fontSize: '0.9rem',
+                  letterSpacing: '0.14em',
+                  textTransform: 'uppercase',
+                  color: 'rgba(255,255,255,0.6)',
+                  animation: 'lockBlink 1.4s ease-in-out infinite',
+                  '@keyframes lockBlink': {
+                    '0%, 100%': { opacity: 1 },
+                    '50%': { opacity: 0.45 },
+                  },
+                  '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+                }}
+              >
+                {t('lobby.waitingForPlayers')}
+              </Box>
             </Stack>
-          </Container>
+          </Box>
         )}
         renderStarted={() => {
           if (gameLoading || !gameState) {

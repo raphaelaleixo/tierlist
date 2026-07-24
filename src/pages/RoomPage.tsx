@@ -92,52 +92,21 @@ export default function RoomPage() {
   // CTA. Empty slots stay dim until a player joins. Sizes are
   // viewport-relative (vw) so the lobby scales proportionally on whatever
   // screen it's projected to.
+  // `roomState.players` is a fixed array of `maxPlayers` slots (each
+  // empty/joining/ready), NOT a list of people who joined. Only the non-empty
+  // slots are actually in the lobby; the empty ones collapse into the single
+  // waiting strip.
   const maxSlots = roomState.config.maxPlayers;
-  const filledSlots = roomState.players;
-  const emptyCount = Math.max(0, maxSlots - filledSlots.length);
+  const activePlayers = derived.activePlayers;
+  const emptyCount = derived.emptyCount;
 
   return (
     <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', fontFamily: CARD_FONT }}>
       <AppHeader roomCode={roomState.roomId} roomState={roomState} showFullscreen />
 
-      {/* Player row — same 1/N geometry as the game phases. */}
-      <Box
-        sx={{
-          height: '12vw',
-          display: 'flex',
-          '& > *': {
-            flex: `0 0 calc(100% / ${maxSlots})`,
-            maxWidth: `calc(100% / ${maxSlots})`,
-          },
-        }}
-      >
-        {filledSlots.map((slot, i) => {
-          const colorHex = slot.data?.color ? PLAYER_COLOR_HEX[slot.data.color] : null;
-          const isReady = slot.status === 'ready';
-          const label = slot.name ?? `Player ${slot.id}`;
-          return (
-            <LobbyPlayerCell
-              key={`p-${slot.id}`}
-              index={i}
-              label={label}
-              status={isReady ? t('lobby.ready') : ''}
-              colorHex={isReady ? colorHex : null}
-            />
-          );
-        })}
-        {Array.from({ length: emptyCount }).map((_, i) => (
-          <LobbyPlayerCell
-            key={`empty-${i}`}
-            index={filledSlots.length + i}
-            label={`Player ${filledSlots.length + i + 1}`}
-            status={t('lobby.empty')}
-            colorHex={null}
-          />
-        ))}
-      </Box>
-
-      {/* Hero: QR on the left, room code + scan hint on the right, vertically
-          centred as a pair. */}
+      {/* Hero: QR on the left; room code, scan hint, and the Start CTA stacked
+          on the right — the button sits side-by-side with the QR as one unit,
+          vertically centred in the middle of the screen. */}
       <Box
         sx={{
           flex: 1,
@@ -146,129 +115,173 @@ export default function RoomPage() {
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: '3vw',
+          gap: '6vw',
           py: 4,
           px: 2,
         }}
       >
-        <Box
-          sx={{
-            p: '1vw',
-            bgcolor: '#fff',
-            borderRadius: '0.8vw',
-            boxShadow: '0 1.2vw 2.8vw rgba(0,0,0,0.35)',
-          }}
-        >
-          <RoomQRCode
-            roomId={roomState.roomId}
-            url={buildJoinUrl(roomState.roomId)}
-            size={qrSize}
-          />
-        </Box>
-
+        {/* ── QR-code block: QR image + room code, grouped as one unit ── */}
         <Box
           sx={{
             display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'flex-start',
-            gap: '1.5vw',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: '3vw',
           }}
         >
-          {/* "ROOM" overline + the code, stacked tight as one unit. */}
+          <Box
+            sx={{
+              p: '1vw',
+              bgcolor: '#fff',
+              borderRadius: '0.8vw',
+              boxShadow: '0 1.2vw 2.8vw rgba(0,0,0,0.35)',
+            }}
+          >
+            <RoomQRCode
+              roomId={roomState.roomId}
+              url={buildJoinUrl(roomState.roomId)}
+              size={qrSize}
+            />
+          </Box>
+
           <Box
             sx={{
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'flex-start',
-              gap: '0.3vw',
+              gap: '1.5vw',
             }}
           >
+            {/* "ROOM" overline + the code, stacked tight as one unit. */}
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'flex-start',
+                gap: '0.3vw',
+              }}
+            >
+              <Box
+                sx={{
+                  fontWeight: 700,
+                  fontSize: '0.85vw',
+                  letterSpacing: '0.25em',
+                  textTransform: 'uppercase',
+                  color: 'rgba(255,255,255,0.55)',
+                }}
+              >
+                {t('lobby.roomLabel')}
+              </Box>
+              <Box
+                sx={{
+                  fontWeight: 900,
+                  fontSize: '4vw',
+                  lineHeight: 1,
+                  color: 'text.primary',
+                  textAlign: 'left',
+                }}
+              >
+                {roomState.roomId}
+              </Box>
+            </Box>
+
             <Box
               sx={{
                 fontWeight: 700,
-                fontSize: '0.85vw',
-                letterSpacing: '0.25em',
+                fontSize: '0.95vw',
+                letterSpacing: 3,
                 textTransform: 'uppercase',
-                color: 'rgba(255,255,255,0.55)',
-              }}
-            >
-              {t('lobby.roomLabel')}
-            </Box>
-            <Box
-              sx={{
-                fontWeight: 900,
-                fontSize: '4vw',
-                lineHeight: 1,
-                color: 'text.primary',
+                color: 'rgba(255,255,255,0.65)',
+                maxWidth: '24vw',
                 textAlign: 'left',
               }}
             >
-              {roomState.roomId}
+              {t('lobby.scanHint')}
             </Box>
           </Box>
+        </Box>
 
+        {/* ── Start-game block: its own column to the right of the QR block ── */}
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '1vw',
+          }}
+        >
+          <ShinyButton
+            accent="#ffce1c"
+            variant="primary"
+            disabled={!derived.canStart}
+            onClick={() => void updateRoom(startGame(roomState))}
+          >
+            <Box
+              sx={{
+                fontFamily: CARD_FONT,
+                fontWeight: 900,
+                fontSize: '1.7vw',
+                letterSpacing: 3,
+                px: '2.5vw',
+                py: '0.6vw',
+              }}
+            >
+              {t('lobby.start')}
+            </Box>
+          </ShinyButton>
           <Box
             sx={{
               fontWeight: 700,
-              fontSize: '0.95vw',
-              letterSpacing: 3,
+              fontSize: '0.9vw',
+              letterSpacing: 2,
               textTransform: 'uppercase',
               color: 'rgba(255,255,255,0.65)',
-              maxWidth: '32vw',
-              textAlign: 'left',
             }}
           >
-            {t('lobby.scanHint')}
+            {t('lobby.playerCount', {
+              count: derived.readyCount,
+              max: roomState.config.maxPlayers,
+              min: roomState.config.minPlayers,
+            })}
           </Box>
         </Box>
       </Box>
 
-      {/* CTA footer */}
+      {/* Player row pinned to the bottom — joined players occupy the same 1/N
+          geometry as the game phases; the remaining seats collapse into a
+          single "waiting" strip that shrinks as players join and disappears
+          once the lobby is full. */}
       <Box
         sx={{
-          py: 3,
-          px: 2,
+          height: '12vw',
           display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: 1.5,
           borderTop: '1px solid rgba(255,255,255,0.06)',
         }}
       >
-        <ShinyButton
-          accent="#ffce1c"
-          variant="primary"
-          disabled={!derived.canStart}
-          onClick={() => void updateRoom(startGame(roomState))}
-        >
-          <Box
-            sx={{
-              fontFamily: CARD_FONT,
-              fontWeight: 900,
-              fontSize: '1.7vw',
-              letterSpacing: 3,
-              px: '2.5vw',
-              py: '0.6vw',
-            }}
-          >
-            {t('lobby.start')}
-          </Box>
-        </ShinyButton>
-        <Box
-          sx={{
-            fontWeight: 700,
-            fontSize: '0.9vw',
-            letterSpacing: 2,
-            textTransform: 'uppercase',
-            color: 'rgba(255,255,255,0.65)',
-          }}
-        >
-          {t('lobby.playerCount', {
-            count: derived.readyCount,
-            max: roomState.config.maxPlayers,
-            min: roomState.config.minPlayers,
-          })}
-        </Box>
+        {activePlayers.map((slot, i) => {
+          const colorHex = slot.data?.color ? PLAYER_COLOR_HEX[slot.data.color] : null;
+          const isReady = slot.status === 'ready';
+          const label = slot.name ?? `Player ${slot.id}`;
+          return (
+            <Box
+              key={`p-${slot.id}`}
+              sx={{
+                flex: `0 0 calc(100% / ${maxSlots})`,
+                maxWidth: `calc(100% / ${maxSlots})`,
+              }}
+            >
+              <LobbyPlayerCell
+                index={i}
+                label={label}
+                status={isReady ? t('lobby.ready') : t('lobby.joining')}
+                colorHex={isReady ? colorHex : null}
+              />
+            </Box>
+          );
+        })}
+        {emptyCount > 0 && (
+          <LobbyWaitingStrip label={t('lobby.waitingForOthers')} />
+        )}
       </Box>
     </Box>
   );
@@ -291,6 +304,48 @@ function useViewportSize(ratio: number, min: number, max: number): number {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return size;
+}
+
+/** Single flexible strip that fills the seats not yet taken. Grows to the full
+ *  row when the lobby is empty and shrinks toward zero as players join; the
+ *  caller stops rendering it once the lobby is full. */
+function LobbyWaitingStrip({ label }: { label: string }) {
+  return (
+    <Box
+      sx={{
+        flex: '1 1 0',
+        minWidth: 0,
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        px: '3cqi',
+        background: 'rgba(255,255,255,0.06)',
+        containerType: 'inline-size',
+      }}
+    >
+      <Box
+        sx={{
+          textAlign: 'center',
+          fontFamily: CARD_FONT,
+          fontWeight: 700,
+          fontSize: 'clamp(0.8rem, 5cqi, 1.4vw)',
+          letterSpacing: 2,
+          textTransform: 'uppercase',
+          color: 'rgba(255,255,255,0.4)',
+          // Shared waiting idiom — blinking uppercase label.
+          animation: 'lockBlink 1.4s ease-in-out infinite',
+          '@keyframes lockBlink': {
+            '0%, 100%': { opacity: 1 },
+            '50%': { opacity: 0.45 },
+          },
+          '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+        }}
+      >
+        {label}
+      </Box>
+    </Box>
+  );
 }
 
 interface LobbyPlayerCellProps {

@@ -20,7 +20,6 @@ import {
   advanceAfterTrick,
   startRound2,
   endGame,
-  showTierReveal,
 } from '../game/lifecycle';
 import BigScreenGame from '../components/BigScreenGame';
 import type { TierRoomState } from '../hooks/useFirebaseRoom';
@@ -131,8 +130,7 @@ type FixtureKey =
   | 'card-play-pending'
   | 'card-play-resolved-upset'
   | 'card-play-late-round'
-  | 'end-reveal'
-  | 'final-score';
+  | 'end-reveal';
 
 // Build the full card-play state with one card played per player (each in a
 // distinct tier). The card IDs are stable for the lifetime of this state, so
@@ -282,15 +280,10 @@ const FIXTURES: Record<FixtureKey, { label: string; build: (count: number) => Ga
       return s;
     },
   },
-  // New flow: endGame → 'final-score' (rankings first); showTierReveal
-  // advances to 'game-end-reveal' (tier lists).
-  'final-score': {
-    label: 'Final score',
-    build: (count) => bootstrapToEndReveal(count),
-  },
+  // Single combined end-game screen — fixture shows rankings + tier lists.
   'end-reveal': {
     label: 'End reveal',
-    build: (count) => showTierReveal(bootstrapToEndReveal(count)),
+    build: (count) => bootstrapToEndReveal(count),
   },
 };
 

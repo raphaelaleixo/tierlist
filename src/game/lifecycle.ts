@@ -314,14 +314,10 @@ export function startRound2(state: GameState): GameState {
 
 // ─── End game ─────────────────────────────────────────────────────────────
 
-// End-game flow: final-score (rankings, winner spotlight) is shown FIRST,
-// then advances to game-end-reveal (every tier list incl. mystery cards).
-// The big-screen final score has a "See tier lists" CTA that calls
-// showTierReveal to advance.
+// End-game: a single screen (BigScreenEndReveal) handles both rankings and
+// the tier-list reveal, so endGame is the only end-of-game transition.
+// `'game-end-reveal'` stays in the type for backwards compat / persisted
+// fixtures; BigScreenGame routes both phases to the same component.
 export function endGame(state: GameState): GameState {
   return { ...state, phase: 'final-score' };
-}
-
-export function showTierReveal(state: GameState): GameState {
-  return { ...state, phase: 'game-end-reveal' };
 }

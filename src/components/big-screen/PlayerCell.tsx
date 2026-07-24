@@ -6,6 +6,7 @@ import TierCard from '../TierCard';
 import OpenMojiIcon from '../OpenMojiIcon';
 import { pastelOnDark } from '../../utils/blob';
 import PlayerSlot, { PlayerNameLine } from './PlayerSlot';
+import { CELL_STAGGER_MS } from './phaseTransition';
 import type { PlayerMeta } from './playerMeta';
 
 // Keep in sync with the `tierCardDropIn` keyframe duration in TierCard.
@@ -303,6 +304,7 @@ export default function PlayerCell({
     <PlayerSlot
       meta={meta}
       ready
+      enterDelayMs={cellIndex * CELL_STAGGER_MS}
       top={topSlot}
       middle={middleSlot}
       bottom={bottomSlot}
