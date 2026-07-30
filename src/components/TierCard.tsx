@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { Box } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import type { PlayerColor, Tier } from "../game/types";
 import { openMojiBlackUrl } from "../utils/openMoji";
 import { blobBorderRadius, pastel } from "../utils/blob";
@@ -60,6 +61,10 @@ export interface TierCardProps {
   tier: Tier;
   /** When false, the tier letter shows as "?" and the emoji is desaturated. */
   revealed: boolean;
+  /** The holder's private guess at this card's tier. Shown as "S?" in the
+   *  banner while `revealed` is false, muted so it never reads as fact.
+   *  Ignored once `revealed` is true. Never leaves the holder's device. */
+  guess?: Tier;
   /** Card width in pixels. Defaults to 300; pass smaller for hand/history. */
   width?: number;
   /** When true, ignore `width` and let the card fill its parent's height (5/7 aspect ratio). */
@@ -85,13 +90,22 @@ export default function TierCard({
   item,
   tier,
   revealed,
+  guess,
   width = 300,
   heightBound = false,
   variant = "light",
   animation,
   compact = false,
 }: TierCardProps) {
-  const accent = revealed ? TIER_COLORS[tier] : "#9a9a9a";
+  // A guess borrows the tier's colour at reduced alpha rather than a
+  // desaturated version: desaturating this palette collapses adjacent tiers
+  // toward the same grey, which would leave the letter carrying all the signal.
+  const showGuess = !revealed && guess !== undefined;
+  const accent = revealed
+    ? TIER_COLORS[tier]
+    : showGuess
+      ? alpha(TIER_COLORS[guess], 0.55)
+      : "#9a9a9a";
   const tokens = VARIANT_TOKENS[variant];
   const holderHex = PLAYER_COLOR_HEX[holderColor];
 
@@ -315,13 +329,15 @@ export default function TierCard({
               fontSize: "8cqi",
               fontWeight: 900,
               lineHeight: 1,
-              transform: revealed ? "none" : "translateY(110%)",
+              // A guess slides the banner up early, reusing the reveal
+              // animation — so committing a guess feels like a small reveal.
+              transform: revealed || showGuess ? "none" : "translateY(110%)",
               transition: "transform 420ms cubic-bezier(0.34, 1.2, 0.64, 1)",
               WebkitTextStroke: "1.5cqi rgba(0,0,0,0.35)",
               paintOrder: "stroke fill",
             }}
           >
-            {revealed ? tier : "?"}
+            {revealed ? tier : showGuess ? `${guess}?` : "?"}
           </Box>
         )}
       </Box>
