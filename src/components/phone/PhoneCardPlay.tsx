@@ -1,22 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Box, Container, Stack } from '@mui/material';
-import {
-  DndContext,
-  MouseSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-  closestCenter,
-  type DragEndEvent,
-  type Modifier,
-} from '@dnd-kit/core';
-import {
-  SortableContext,
-  horizontalListSortingStrategy,
-  useSortable,
-  arrayMove,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import type { GameState, HandCard } from '../../game/types';
 import {
   currentTurnPlayerId,
@@ -74,79 +57,6 @@ export default function PhoneCardPlay({ roomId, gameState, myId, meta }: Props) 
   const selectedCard = myHand.find((c) => c.id === selectedCardId && !c.played);
   const canPlay =
     isMyTurn && !trickComplete && !iAlreadyPlayedThisTrick && !!selectedCard && !submitting;
-
-  // Local-only hand order. The deal randomises the order in game state, but
-  // we let the player rearrange their own hand by long-press + drag. The
-  // reordered list is keyed by cardId; cards added/removed (e.g. when the
-  // round changes) get reconciled in the effect below.
-  const [orderedIds, setOrderedIds] = useState<string[]>(() => myHand.map((c) => c.id));
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setOrderedIds((prev) => {
-      const handIds = new Set(myHand.map((c) => c.id));
-      const kept = prev.filter((id) => handIds.has(id));
-      const known = new Set(kept);
-      const appended = myHand.filter((c) => !known.has(c.id)).map((c) => c.id);
-      const next = [...kept, ...appended];
-      // Avoid useless renders when nothing actually changed.
-      return next.length === prev.length && next.every((id, i) => id === prev[i]) ? prev : next;
-    });
-  }, [myHand]);
-
-  // Build the rendered hand by following the local order, with any
-  // un-ordered cards (shouldn't happen post-effect, but safe) tacked on.
-  const orderedHand = useMemo(() => {
-    const byId = new Map(myHand.map((c) => [c.id, c]));
-    const out: HandCard[] = [];
-    for (const id of orderedIds) {
-      const c = byId.get(id);
-      if (c) out.push(c);
-    }
-    for (const c of myHand) {
-      if (!orderedIds.includes(c.id)) out.push(c);
-    }
-    return out;
-  }, [myHand, orderedIds]);
-
-  // Sensor split: mouse activates immediately on a small drag distance
-  // (normal click-and-drag); touch requires a deliberate long-press
-  // (held still ~500 ms) so a quick horizontal swipe still scrolls the
-  // carousel natively.
-  const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 500, tolerance: 10 } }),
-  );
-
-  // Without this, dnd-kit visualises the dragged card wherever your pointer
-  // goes — including off the edge of the carousel. Clamp the card's
-  // transform to the carousel's visible bounds so it "sticks" at the edge
-  // while auto-scroll brings more cards into view.
-  const clampDragToCarousel: Modifier = ({
-    transform,
-    draggingNodeRect,
-    scrollableAncestorRects,
-  }) => {
-    const scroller = scrollableAncestorRects[0];
-    if (!draggingNodeRect || !scroller) return transform;
-    const minX = scroller.left - draggingNodeRect.left;
-    const maxX = scroller.right - draggingNodeRect.right;
-    return {
-      ...transform,
-      x: Math.max(minX, Math.min(maxX, transform.x)),
-      y: 0,
-    };
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    setOrderedIds((prev) => {
-      const oldIndex = prev.indexOf(String(active.id));
-      const newIndex = prev.indexOf(String(over.id));
-      if (oldIndex === -1 || newIndex === -1) return prev;
-      return arrayMove(prev, oldIndex, newIndex);
-    });
-  };
 
   async function handlePlay() {
     if (!selectedCard || !canPlay) return;
@@ -242,63 +152,47 @@ export default function PhoneCardPlay({ roomId, gameState, myId, meta }: Props) 
       </Container>
 
       {/* Hand — full-width horizontal scroll-snap. NOT constrained by the
-          Container above, so neighbours peek properly on desktop-mock too
-          (where the Container caps at ~444 px). Long-press a card to pick
-          it up and drag; quick tap selects; quick swipe scrolls. */}
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        modifiers={[clampDragToCarousel]}
-        onDragStart={() => {
-          if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-            navigator.vibrate?.(15);
-          }
+          Container above, so neighbours peek properly on the desktop mock
+          (where the Container caps at ~444 px). Tap a card to select it. */}
+      <Box
+        sx={{
+          // Cards are a fixed size, so the carousel just hugs their height
+          // instead of stretching to fill the column (no flex: 1).
+          flexShrink: 0,
+          display: 'flex',
+          alignItems: 'center',
+          overflowX: 'auto',
+          overflowY: 'hidden',
+          overscrollBehaviorX: 'contain',
+          scrollSnapType: 'x mandatory',
+          px: `max(0px, calc((100% - ${CARD_WIDTH}px) / 2))`,
+          scrollPaddingInline: `max(0px, calc((100% - ${CARD_WIDTH}px) / 2))`,
+          gap: 1.5,
+          '&::-webkit-scrollbar': { display: 'none' },
+          scrollbarWidth: 'none',
+          py: 4.5,
         }}
-        onDragEnd={handleDragEnd}
-        autoScroll={{ acceleration: 5, threshold: { x: 0.15, y: 0 } }}
       >
-        <SortableContext items={orderedIds} strategy={horizontalListSortingStrategy}>
-          <Box
-            sx={{
-              // Cards are a fixed size, so the carousel just hugs their height
-              // instead of stretching to fill the column (no flex: 1).
-              flexShrink: 0,
-              display: 'flex',
-              alignItems: 'center',
-              overflowX: 'auto',
-              overflowY: 'hidden',
-              overscrollBehaviorX: 'contain',
-              scrollSnapType: 'x mandatory',
-              px: `max(0px, calc((100% - ${CARD_WIDTH}px) / 2))`,
-              scrollPaddingInline: `max(0px, calc((100% - ${CARD_WIDTH}px) / 2))`,
-              gap: 1.5,
-              '&::-webkit-scrollbar': { display: 'none' },
-              scrollbarWidth: 'none',
-              py: 4.5,
+        {myHand.map((card) => (
+          <HandCardView
+            key={card.id}
+            card={card}
+            isSelected={card.id === selectedCardId}
+            isSelectable={
+              !card.played && isMyTurn && !trickComplete && !iAlreadyPlayedThisTrick
+            }
+            onTap={() => {
+              if (!card.played && isMyTurn && !trickComplete && !iAlreadyPlayedThisTrick) {
+                setSelectedCardId((id) => (id === card.id ? null : card.id));
+              }
             }}
-          >
-            {orderedHand.map((card) => (
-              <SortableCard
-                key={card.id}
-                card={card}
-                isSelected={card.id === selectedCardId}
-                isPlayable={
-                  !card.played && isMyTurn && !trickComplete && !iAlreadyPlayedThisTrick
-                }
-                onTap={() => {
-                  if (!card.played && isMyTurn && !trickComplete && !iAlreadyPlayedThisTrick) {
-                    setSelectedCardId((id) => (id === card.id ? null : card.id));
-                  }
-                }}
-                category={myCategory}
-                writerName={writer?.name ?? ''}
-                holderColor={me?.color ?? 'red'}
-                myColor={myColor}
-              />
-            ))}
-          </Box>
-        </SortableContext>
-      </DndContext>
+            category={myCategory}
+            writerName={writer?.name ?? ''}
+            holderColor={me?.color ?? 'red'}
+            myColor={myColor}
+          />
+        ))}
+      </Box>
 
       {/* CTA — back inside the constrained Container. Once the trick is
           resolved the CTA becomes a shared "Continue" that any player can tap
@@ -399,12 +293,12 @@ export default function PhoneCardPlay({ roomId, gameState, myId, meta }: Props) 
   );
 }
 
-// ─── Sortable hand card ──────────────────────────────────────────────────
+// ─── Hand card ──────────────────────────────────────────────────
 
-interface SortableCardProps {
+interface HandCardViewProps {
   card: HandCard;
   isSelected: boolean;
-  isPlayable: boolean;
+  isSelectable: boolean;
   onTap: () => void;
   category: { emoji: string; name: string } | null;
   writerName: string;
@@ -412,67 +306,37 @@ interface SortableCardProps {
   myColor: string;
 }
 
-function SortableCard({
+function HandCardView({
   card,
   isSelected,
-  isPlayable,
+  isSelectable,
   onTap,
   category,
   writerName,
   holderColor,
   myColor,
-}: SortableCardProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
-    id: card.id,
-    // Slow the neighbour cards' shuffle so reordering feels deliberate.
-    transition: { duration: 380, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' },
-  });
-
-  const draggableStyle = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: card.played ? 0.25 : isDragging ? 0.85 : 1,
-    filter: isDragging
-      ? `drop-shadow(0 14px 22px rgba(0,0,0,0.5))`
-      : isSelected
-        ? `drop-shadow(0 8px 18px ${myColor})`
-        : 'none',
-    zIndex: isDragging ? 5 : 'auto',
-    transitionProperty: 'transform, filter, opacity',
+}: HandCardViewProps) {
+  const cardStyle = {
+    opacity: card.played ? 0.25 : 1,
+    filter: isSelected ? `drop-shadow(0 8px 18px ${myColor})` : 'none',
+    transitionProperty: 'filter, opacity, translate, scale',
+    transitionDuration: '200ms',
   } as const;
 
   return (
     <Box
-      ref={setNodeRef}
-      {...attributes}
-      {...listeners}
-      onClick={() => {
-        if (isDragging) return;
-        onTap();
-      }}
+      onClick={onTap}
       sx={{
         flex: `0 0 ${CARD_WIDTH}px`,
         aspectRatio: '5/7',
         scrollSnapAlign: 'center',
         position: 'relative',
-        cursor: isPlayable ? 'pointer' : 'default',
+        cursor: isSelectable ? 'pointer' : 'default',
         userSelect: 'none',
         WebkitUserSelect: 'none',
         WebkitTouchCallout: 'none',
-        // `pan-x` lets the carousel scroll natively when the player swipes
-        // quickly; dnd-kit's TouchSensor takes over only after the 500 ms
-        // long-press, at which point it preventDefaults touchmove and
-        // suppresses the scroll for the duration of the drag.
-        touchAction: 'pan-x',
-        ...(isSelected && !isDragging ? { translate: '0 -8px', scale: '1.03' } : {}),
-        ...draggableStyle,
+        ...(isSelected ? { translate: '0 -8px', scale: '1.03' } : {}),
+        ...cardStyle,
       }}
     >
       <TierCard
