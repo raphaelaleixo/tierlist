@@ -7,7 +7,7 @@ The parent `Projects/CLAUDE.md` is auto-loaded and defines the stack, routing, d
 These are contractual but easy to re-litigate. Anchor on them:
 
 - **Tier-list theming, not faithful re-skin.** Ranks are `S`, `A`, `B`, `C`, `D`, `F` (not 1–5 + heart). `S` is "favourite", `F` is "hate". F beats S; otherwise lowest letter wins. F has no comparison power outside the F-vs-S exception.
-- **Brief recap, then memory.** After a player submits their tier list for a neighbour, their phone shows the recap for ~8 seconds, then it disappears for the rest of the game. The strategic asymmetry (writer knows the other's hand) is preserved as a memory game, not a persistent overlay. Don't add a "peek" button.
+- **Brief recap, then memory.** After a player submits their own tier list, their phone shows the recap for ~8 seconds, then it disappears for the rest of the game. The strategic asymmetry (writer knows the other's hand) is preserved as a memory game, not a persistent overlay. Don't add a "peek" button.
 - **Categories: free-text plus 3 suggestions.** Phone has a free-text input *and* 3 random suggestions from a static pool (seed from the rulebook example list). Both work; don't make players pick a mode.
 - **No disconnect handling.** This is a same-room party game. No pause UI, no auto-play for absent players, no reseat-on-rejoin flow. Passive reconnect to room state via `react-gameroom` is enough.
 - **Big-screen end-of-game reveal.** After the last trick, the big screen does an animated walkthrough of every player's full tier list across both rounds — including the unplayed mystery card. This is the marquee moment; budget UI polish for it.

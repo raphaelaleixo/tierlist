@@ -351,4 +351,3 @@ describe('currentTurnPlayerId', () => {
     expect(currentTurnPlayerId(s)).toBeNull();
   });
 });
-

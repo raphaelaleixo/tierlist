@@ -62,7 +62,7 @@ export default function BigScreenTierWriting({ gameState, round, meta }: Props) 
 
       <PhaseIntroBanner
         title="Fill the tier list"
-        subtitle="Write a tier list for the category your neighbour picked for you."
+        subtitle="Rank your own favourites in the category your neighbour picked for you."
       />
 
       <Box
