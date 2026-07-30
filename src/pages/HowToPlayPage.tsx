@@ -10,9 +10,9 @@ const CARD_FONT =
   '"Bricolage Grotesque", -apple-system, "Helvetica Neue", "Segoe UI", system-ui, sans-serif';
 
 const GLOSSARY: ReadonlyArray<readonly [string, ReactNode]> = [
-  ['Tier list', 'A player&rsquo;s own six favourites, ranked S (favourite) down to F (hate). Someone else plays it.'],
+  ['Tier list', 'A player’s own six favourites, ranked S (favourite) down to F (hate). Someone else plays it.'],
   ['Category', 'The prompt you tier — “Animals”, “90s movies”, “breakfast cereals”.'],
-  ['Hand', 'The six cards you hold and play during a round — another player&rsquo;s tier list, handed to you to play blind.'],
+  ['Hand', 'The six cards you hold and play during a round — another player’s tier list, handed to you to play blind.'],
   ['Trick', 'One go-around where every player plays a card. The lowest tier wins it.'],
   ['Heart', 'A point. You earn one for every trick you win.'],
   ['Round', 'A full pick-a-category → write-a-list → five-tricks cycle. A game has two.'],
