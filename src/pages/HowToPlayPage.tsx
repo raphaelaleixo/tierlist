@@ -10,9 +10,9 @@ const CARD_FONT =
   '"Bricolage Grotesque", -apple-system, "Helvetica Neue", "Segoe UI", system-ui, sans-serif';
 
 const GLOSSARY: ReadonlyArray<readonly [string, ReactNode]> = [
-  ['Tier list', 'The six-card ranking a player writes for a neighbour, S (favourite) down to F (hate).'],
+  ['Tier list', 'A player&rsquo;s own six favourites, ranked S (favourite) down to F (hate). Someone else plays it.'],
   ['Category', 'The prompt you tier — “Animals”, “90s movies”, “breakfast cereals”.'],
-  ['Hand', 'The six cards you hold and play during a round — written for you by a neighbour.'],
+  ['Hand', 'The six cards you hold and play during a round — another player&rsquo;s tier list, handed to you to play blind.'],
   ['Trick', 'One go-around where every player plays a card. The lowest tier wins it.'],
   ['Heart', 'A point. You earn one for every trick you win.'],
   ['Round', 'A full pick-a-category → write-a-list → five-tricks cycle. A game has two.'],
@@ -40,14 +40,14 @@ export default function HowToPlayPage() {
           <Stack spacing={1.5}>
             <Box sx={overline}>How to play</Box>
             <Box component="h1" sx={{ ...h1, m: 0 }}>
-              Rate your friends&rsquo; taste
+              Your taste, in someone else&rsquo;s hands
             </Box>
             <Box sx={lead}>
               Tierlist is a trick-taking party game hiding inside a tier list — a web take on{' '}
-              <em>My Favourite Things</em> by Nilgiri (Archie Edwards). You secretly rank a
-              neighbour&rsquo;s favourites from S to F; they play the hand without knowing the ranks
-              you gave. Play the lowest tier to win a trick — but the F-tier you hate beats the
-              S-tier you love. Most hearts after two rounds wins.
+              <em>My Favourite Things</em> by Nilgiri (Archie Edwards). You secretly rank{' '}
+              <b>your own</b> favourites from S to F — then a neighbour plays them without
+              knowing the order you gave. Play the lowest tier to win a trick — but the F-tier
+              you hate beats the S-tier you love. Most hearts after two rounds wins.
             </Box>
           </Stack>
 
@@ -68,18 +68,21 @@ export default function HowToPlayPage() {
           <Section overline="The loop" title="A round, in three phases">
             <Box sx={body}>
               Each round runs through the same three phases. You&rsquo;ll pick a category for one
-              neighbour, secretly tier a list for another, then play out five tricks.
+              neighbour, secretly rank your own favourites in a category someone handed you,
+              then play out five tricks.
             </Box>
 
             <SubSection n="1" title="Pick a category">
               On your phone, choose a category and hand it to a neighbour — your <b>left</b> neighbour
-              in round 1, your <b>right</b> in round 2. They&rsquo;ll write the tier list, but{' '}
-              <b>you&rsquo;ll be the one who plays it</b> later. Stuck for an idea? Tap one of three
+              in round 1, your <b>right</b> in round 2. They&rsquo;ll rank <b>their own</b>{' '}
+              favourites in it — and <b>you&rsquo;ll be the one who plays that list</b> later.
+              Stuck for an idea? Tap one of three
               suggestions. Once everyone has picked, every category goes public on the big screen.
             </SubSection>
 
             <SubSection n="2" title="Write the tier list">
-              Now fill in the category a neighbour gave <em>you</em>: six items, one for each tier from{' '}
+              Now fill in the category a neighbour gave <em>you</em>: <b>your</b> six items —
+              your actual favourites, your actual ranking — one for each tier from{' '}
               <b>S (favourite)</b> to <b>F (hate)</b>. When you submit, you get about eight seconds to
               burn the list into memory — because it&rsquo;s hidden for the rest of the round. The
               catch: the person who plays these six cards is your neighbour, not you. You&rsquo;re the
@@ -87,7 +90,8 @@ export default function HowToPlayPage() {
             </SubSection>
 
             <SubSection n="3" title="Play the tricks">
-              You&rsquo;re now holding six cards a neighbour wrote for you. You can see the items but{' '}
+              You&rsquo;re now holding six cards a neighbour wrote — <b>their</b> favourites, not
+              yours. You can see the items but{' '}
               <b>not their tiers</b> — the neighbour who wrote them still remembers, as well as they
               can. Over five tricks, everyone plays one card, starting with the lead. Items show
               face-up; tiers stay hidden until all cards are down, then flip one by one. The winner

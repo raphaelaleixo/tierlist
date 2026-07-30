@@ -6,6 +6,8 @@ Digital adaptation of *My Favourite Things* by Nilgiri / Archie Edwards, rebrand
 
 A trick-taking party game where you tier rank your own favourite things in a category your neighbour picked for you — but you don't know what you tiered each item as during play. You see only the items in your hand; your *tiering* is hidden until each card is revealed in the trick. The player who tiered your hand still remembers what they wrote, giving them strategic insight into your moves. Win tricks (one per trick) by playing the lowest tier — except the F-tier ("hate") card, which specifically beats an S-tier ("favourite") card. Most hearts after two rounds wins.
 
+**Whose taste?** Always your own. You never guess another player's preferences — the category is a gift from a neighbour, but the ranking is yours.
+
 ## Player count
 
 - **3–6 players.** Six colour identities (matching paper's six suits).
@@ -17,7 +19,7 @@ A trick-taking party game where you tier rank your own favourite things in a cat
 - **Tier cards (per player):** 6 cards, one per tier — `S`, `A`, `B`, `C`, `D`, `F`. Each player owns one set in their colour. These are persistent identifiers; rank is fixed to the card.
 - **Item slots (per player per round):** 6 free-text strings, one per tier card. Written by the player to one side (left in round 1, right in round 2). These are filled at the start of each round and discarded at round end.
 - **Category (per player per round):** a free-text string chosen by their neighbour. Public on the big screen from the moment it's assigned.
-- **Hand (per player during play):** the 6 tier cards (with the items written by the assigner) in shuffled, opaque order. Items visible to the holder; tiers hidden.
+- **Hand (per player during play):** the 6 tier cards (with the items written by the neighbour you assigned a category to) in shuffled, opaque order. Items visible to the holder; tiers hidden.
 - **Hearts:** integer score per player. Pool of hearts is conceptually unlimited (10 awarded per game max).
 - **First-player marker:** points to the player who leads the next trick. Passes left after each trick.
 - **Category suggestion pool:** a static JSON list (seeded from the rulebook's example categories — TV shows, animals, etc.) used to surface 3 random suggestions to a player who is stuck.
@@ -105,7 +107,7 @@ Final score screen with hearts follows.
 - **Phase 1:** "Pick a category for [left/right neighbour]" — free-text input + 3 tappable suggestions. Copy reflects who you're picking *for* (the player whose hand you'll then play). Locked once submitted.
 - **Phase 2:** "Tier your [category] for [neighbour]" — 6 input fields stacked vertically, labelled `S` (best) through `F` (worst / hate). Copy reflects who'll play your list (your right neighbour in R1, left in R2). Submit button enabled when all filled. After submit, ~8-second recap, then "waiting for others".
 - **Phase 3:**
-  - Hand: 6 cards stacked, each showing the item written by the assigner. Tier hidden. One card already-played per trick is greyed/removed.
+  - Hand: 6 cards stacked, each showing the item written by the neighbour you assigned a category to. Tier hidden. One card already-played per trick is greyed/removed.
   - During your turn, tap a card to play it.
   - During other turns, hand is locked but you can still see your remaining items.
   - Heart count and category visible at top.
