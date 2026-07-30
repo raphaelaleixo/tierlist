@@ -19,7 +19,7 @@ const CARD_FONT =
 // height and the phase body (renderStarted / renderReady) fills the rest —
 // which is what lets the phases' `min-height: 100%` resolve against a
 // definite height instead of collapsing to content (the "black space below"
-// bug). `100dvh` tracks the visible area on mobile.
+// bug). `100svh` is the toolbar-visible height, so the shell never clips.
 //
 // `max-width` caps the whole phone experience at MUI's `Container
 // maxWidth="xs"` (444px) and centres it, so on a wide desktop the player
@@ -37,8 +37,13 @@ const playerScreenStyles = (
         display: 'flex',
         flexDirection: 'column',
       },
-      '@supports (height: 100dvh)': {
-        '.tl-player-screen': { height: '100dvh' },
+      // `svh`, not `dvh`: `dvh` tracks the CURRENT viewport, so when Safari's
+      // toolbar slides back into view the box shrinks and clips its content.
+      // `svh` is the toolbar-visible height — it always fits, at the cost of
+      // some dead space while the toolbar is hidden. Right trade for a fixed
+      // app shell that must never clip.
+      '@supports (height: 100svh)': {
+        '.tl-player-screen': { height: '100svh' },
       },
     }}
   />

@@ -357,7 +357,10 @@ export default function PhoneCardPlay({ roomId, gameState, myId, meta }: Props) 
           alignItems: 'center',
           gap: 0.25,
           px: 2.5,
-          py: 1.25,
+          pt: 1.25,
+          // `env()` resolves to 0 without `viewport-fit=cover` in index.html,
+          // so both halves are needed for either to matter.
+          pb: 'calc(10px + env(safe-area-inset-bottom))',
           bgcolor: '#0a0a12',
           borderTop: '1px solid rgba(255,255,255,0.08)',
         }}

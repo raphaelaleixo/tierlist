@@ -180,7 +180,7 @@ export default function MockPlayerPhone() {
         // Flex column so the dev toolbar takes its natural height and the
         // wrapped PhoneGame fills the rest of the viewport — no overflow.
         height: '100vh',
-        '@supports (height: 100dvh)': { height: '100dvh' },
+        '@supports (height: 100svh)': { height: '100svh' },
         display: 'flex',
         flexDirection: 'column',
       }}

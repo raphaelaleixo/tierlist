@@ -107,6 +107,11 @@ function PhonePhaseTransition({ phaseKey, body }: { phaseKey: string; body: Reac
 
   return (
     <Box sx={{ flex: 1, minHeight: 0, position: 'relative', display: 'flex', flexDirection: 'column' }}>
+      {/* Both layers scroll. The shell is a fixed-height flex column and these
+          are `position: absolute; inset: 0`, so without `overflow-y` any phase
+          body taller than the viewport renders outside the box with no way to
+          reach it — the document root can't scroll either. `overscroll-behavior:
+          contain` stops a scroll that hits the end from chaining to the page. */}
       {outgoing ? (
         <Box
           key={outgoing.key}
@@ -115,6 +120,8 @@ function PhonePhaseTransition({ phaseKey, body }: { phaseKey: string; body: Reac
             inset: 0,
             display: 'flex',
             flexDirection: 'column',
+            overflowY: 'auto',
+            overscrollBehavior: 'contain',
             pointerEvents: 'none',
             animation: `phoneExit ${PHONE_EXIT_MS}ms cubic-bezier(0.5, 0, 0.75, 0) forwards`,
             '@keyframes phoneExit': {
@@ -133,6 +140,8 @@ function PhonePhaseTransition({ phaseKey, body }: { phaseKey: string; body: Reac
             inset: 0,
             display: 'flex',
             flexDirection: 'column',
+            overflowY: 'auto',
+            overscrollBehavior: 'contain',
             animation: `phoneEnter ${PHONE_ENTER_MS}ms cubic-bezier(0.22, 1, 0.36, 1) backwards`,
             '@keyframes phoneEnter': {
               from: { transform: 'translateY(100%)', opacity: 0 },
