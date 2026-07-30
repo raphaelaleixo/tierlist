@@ -965,7 +965,7 @@ Replace the entire CTA `<Container>` block (`:307-347`) with:
                       textTransform: 'uppercase',
                     }}
                   >
-                    {selectedCard ? 'Play' : isMyTurn ? 'Pick a card' : 'Waiting'}
+                    {!isMyTurn ? 'Waiting' : selectedCard ? 'Play' : 'Pick a card'}
                   </Box>
                 </ShinyButton>
               )}
@@ -976,6 +976,8 @@ Replace the entire CTA `<Container>` block (`:307-347`) with:
 ```
 
 The primary button keeps its exact existing labels, gating and handlers — only its width and font size change to share the row.
+
+**Do not "simplify" the label expression back to `selectedCard ? 'Play' : …`.** Task 4 deliberately reordered it to test `!isMyTurn` first. Ungating selection made "a card is selected while it is not your turn" reachable for the first time, and under the old ordering that state rendered a disabled button labelled "Play", which reads as a bug. Copy the expression above verbatim.
 
 - [ ] **Step 8: Run the tests to verify they pass**
 
