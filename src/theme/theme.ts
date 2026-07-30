@@ -1,5 +1,5 @@
 import { createTheme } from '@mui/material/styles';
-import type { PlayerColor } from '../game/types';
+import type { PlayerColor, Tier } from '../game/types';
 
 // Muted "darker pastel" player palette — desaturated mid-tones that read
 // distinct on both light and dark cards without screaming.
@@ -10,6 +10,15 @@ export const PLAYER_COLOR_HEX: Record<PlayerColor, string> = {
   green:   '#7da26b', // sage
   cyan:    '#5d9e9e', // dusty teal
   magenta: '#a874b0', // mauve
+};
+
+export const TIER_COLORS: Record<Tier, string> = {
+  S: "#ef3a3a",
+  A: "#ff8c1c",
+  B: "#ffce1c",
+  C: "#3aaf4d",
+  D: "#3a7aef",
+  F: "#9a3aef",
 };
 
 const CARD_FONT =

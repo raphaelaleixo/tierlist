@@ -4,7 +4,7 @@ import { alpha } from "@mui/material/styles";
 import type { PlayerColor, Tier } from "../game/types";
 import { openMojiBlackUrl } from "../utils/openMoji";
 import { blobBorderRadius, pastel } from "../utils/blob";
-import { PLAYER_COLOR_HEX } from "../theme/theme";
+import { PLAYER_COLOR_HEX, TIER_COLORS } from "../theme/theme";
 
 // Single played-card visual. Used in:
 //   - Big-screen current trick area
@@ -14,15 +14,6 @@ import { PLAYER_COLOR_HEX } from "../theme/theme";
 
 const CARD_FONT =
   '"Bricolage Grotesque", -apple-system, "Helvetica Neue", "Segoe UI", system-ui, sans-serif';
-
-const TIER_COLORS: Record<Tier, string> = {
-  S: "#ef3a3a",
-  A: "#ff8c1c",
-  B: "#ffce1c",
-  C: "#3aaf4d",
-  D: "#3a7aef",
-  F: "#9a3aef",
-};
 
 type Variant = "light" | "dark";
 

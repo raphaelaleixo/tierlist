@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Box, Container, Stack } from '@mui/material';
-import type { GameState, HandCard } from '../../game/types';
+import type { GameState, HandCard, Tier } from '../../game/types';
 import {
   currentTurnPlayerId,
   isCurrentTrickComplete,
@@ -15,6 +15,7 @@ import TierCard from '../TierCard';
 import ShinyButton from '../ShinyButton';
 import PlayerNameChip from '../PlayerNameChip';
 import type { PlayerMeta } from '../big-screen/playerMeta';
+import { TIER_COLORS } from '../../theme/theme';
 
 const CARD_FONT =
   '"Bricolage Grotesque", -apple-system, "Helvetica Neue", "Segoe UI", system-ui, sans-serif';
@@ -33,7 +34,10 @@ interface Props {
 
 export default function PhoneCardPlay({ roomId, gameState, myId, meta }: Props) {
   const round = gameState.rounds[gameState.currentRoundIndex]!;
-  const myHand = round.perPlayer[myId]?.hand ?? [];
+  const rawHand = round.perPlayer[myId]?.hand;
+  // Stabilised so the guess-cleanup effect below (keyed on myHand) doesn't
+  // re-run every render off a fresh `?? []` fallback array.
+  const myHand = useMemo(() => rawHand ?? [], [rawHand]);
   const myCategory = round.perPlayer[myId]?.categoryAssigned ?? null;
   const me = meta[myId];
   const myColor = me?.colorHex ?? '#888';
@@ -54,6 +58,32 @@ export default function PhoneCardPlay({ roomId, gameState, myId, meta }: Props) 
   // Two-step play: tap a card to select, then tap the CTA to confirm.
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // The holder's private guesses at their own cards' hidden tiers, keyed by
+  // cardId. Local only — never written to Firebase, never shown on the big
+  // screen, and gone on refresh. It replaces drag-to-reorder as the memory
+  // aid for tracking what you think each card is.
+  const [guesses, setGuesses] = useState<Record<string, Tier>>({});
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  // Drop guesses whose card is no longer in hand (a new round deals new ids).
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setGuesses((prev) => {
+      const handIds = new Set(myHand.map((c) => c.id));
+      const kept = Object.entries(prev).filter(([id]) => handIds.has(id));
+      return kept.length === Object.keys(prev).length
+        ? prev
+        : (Object.fromEntries(kept) as Record<string, Tier>);
+    });
+  }, [myHand]);
+
+  // A picker left open across a selection change would apply to the wrong card.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPickerOpen(false);
+  }, [selectedCardId]);
+
   const selectedCard = myHand.find((c) => c.id === selectedCardId && !c.played);
   const canPlay =
     isMyTurn && !trickComplete && !iAlreadyPlayedThisTrick && !!selectedCard && !submitting;
@@ -190,6 +220,7 @@ export default function PhoneCardPlay({ roomId, gameState, myId, meta }: Props) 
             writerName={writer?.name ?? ''}
             holderColor={me?.color ?? 'red'}
             myColor={myColor}
+            guess={guesses[card.id]}
           />
         ))}
       </Box>
@@ -199,47 +230,159 @@ export default function PhoneCardPlay({ roomId, gameState, myId, meta }: Props) 
           to dismiss the result and advance. `mt: auto` pins the CTA + footer
           to the bottom of the column (the carousel no longer stretches). */}
       <Container maxWidth="xs" sx={{ pb: 2, mt: 'auto' }}>
-        {trickResolved ? (
-          <ShinyButton
-            accent={myColor}
-            variant="primary"
-            fullWidth
-            disabled={dismissRequested}
-            onClick={() => void handleDismiss()}
-          >
-            <Box
-              sx={{
-                fontFamily: CARD_FONT,
-                fontWeight: 900,
-                fontSize: '1rem',
-                letterSpacing: 2,
-                textTransform: 'uppercase',
-              }}
-            >
-              {dismissRequested ? 'Continuing…' : 'Continue'}
+        <Stack spacing={1.2}>
+          {/* Inline, not a modal: a dialog would cover the card whose item you
+              are reading in order to decide. */}
+          {pickerOpen && selectedCard && (
+            <Stack spacing={0.75}>
+              <Box
+                sx={{
+                  textAlign: 'center',
+                  fontFamily: CARD_FONT,
+                  fontSize: '0.7rem',
+                  fontWeight: 700,
+                  letterSpacing: 1.5,
+                  textTransform: 'uppercase',
+                  color: 'rgba(255,255,255,0.55)',
+                }}
+              >
+                Your guess — only you see this
+              </Box>
+              <Box sx={{ display: 'flex', gap: 0.75 }}>
+                {(['S', 'A', 'B', 'C', 'D', 'F'] as const).map((t) => (
+                  <Box
+                    key={t}
+                    component="button"
+                    type="button"
+                    onClick={() => {
+                      setGuesses((prev) => ({ ...prev, [selectedCard.id]: t }));
+                      setPickerOpen(false);
+                    }}
+                    sx={{
+                      flex: 1,
+                      minHeight: 44,
+                      border: 'none',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      fontFamily: CARD_FONT,
+                      fontWeight: 900,
+                      fontSize: '1rem',
+                      color: '#fff',
+                      bgcolor:
+                        guesses[selectedCard.id] === t
+                          ? TIER_COLORS[t]
+                          : 'rgba(255,255,255,0.12)',
+                      outline:
+                        guesses[selectedCard.id] === t
+                          ? '2px solid rgba(255,255,255,0.9)'
+                          : 'none',
+                    }}
+                  >
+                    {t}
+                  </Box>
+                ))}
+              </Box>
+              <Box
+                component="button"
+                type="button"
+                onClick={() => {
+                  setGuesses((prev) => {
+                    const next = { ...prev };
+                    delete next[selectedCard.id];
+                    return next;
+                  });
+                  setPickerOpen(false);
+                }}
+                sx={{
+                  alignSelf: 'center',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontFamily: CARD_FONT,
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  letterSpacing: 1,
+                  textTransform: 'uppercase',
+                  color: 'rgba(255,255,255,0.55)',
+                  py: 0.5,
+                }}
+              >
+                Clear
+              </Box>
+            </Stack>
+          )}
+
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            {/* Fixed positions, never swapping roles: playing a card is
+                irreversible, so the slot under your thumb must not change
+                meaning between turns. */}
+            <Box sx={{ flex: 1 }}>
+              <ShinyButton
+                accent={myColor}
+                variant="secondary"
+                fullWidth
+                disabled={!selectedCard}
+                onClick={() => setPickerOpen((o) => !o)}
+              >
+                <Box
+                  sx={{
+                    fontFamily: CARD_FONT,
+                    fontWeight: 900,
+                    fontSize: '0.95rem',
+                    letterSpacing: 1.5,
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  Guess tier
+                </Box>
+              </ShinyButton>
             </Box>
-          </ShinyButton>
-        ) : (
-          <ShinyButton
-            accent={myColor}
-            variant="primary"
-            fullWidth
-            disabled={!canPlay}
-            onClick={() => void handlePlay()}
-          >
-            <Box
-              sx={{
-                fontFamily: CARD_FONT,
-                fontWeight: 900,
-                fontSize: '1rem',
-                letterSpacing: 2,
-                textTransform: 'uppercase',
-              }}
-            >
-              {!isMyTurn ? 'Waiting' : selectedCard ? 'Play' : 'Pick a card'}
+
+            <Box sx={{ flex: 1 }}>
+              {trickResolved ? (
+                <ShinyButton
+                  accent={myColor}
+                  variant="primary"
+                  fullWidth
+                  disabled={dismissRequested}
+                  onClick={() => void handleDismiss()}
+                >
+                  <Box
+                    sx={{
+                      fontFamily: CARD_FONT,
+                      fontWeight: 900,
+                      fontSize: '0.95rem',
+                      letterSpacing: 1.5,
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    {dismissRequested ? 'Continuing…' : 'Continue'}
+                  </Box>
+                </ShinyButton>
+              ) : (
+                <ShinyButton
+                  accent={myColor}
+                  variant="primary"
+                  fullWidth
+                  disabled={!canPlay}
+                  onClick={() => void handlePlay()}
+                >
+                  <Box
+                    sx={{
+                      fontFamily: CARD_FONT,
+                      fontWeight: 900,
+                      fontSize: '0.95rem',
+                      letterSpacing: 1.5,
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    {!isMyTurn ? 'Waiting' : selectedCard ? 'Play' : 'Pick a card'}
+                  </Box>
+                </ShinyButton>
+              )}
             </Box>
-          </ShinyButton>
-        )}
+          </Box>
+        </Stack>
       </Container>
 
       {/* Black footer bar — turn / result on top, round indicator below,
@@ -304,6 +447,7 @@ interface HandCardViewProps {
   writerName: string;
   holderColor: 'red' | 'orange' | 'yellow' | 'green' | 'cyan' | 'magenta';
   myColor: string;
+  guess?: Tier;
 }
 
 function HandCardView({
@@ -315,6 +459,7 @@ function HandCardView({
   writerName,
   holderColor,
   myColor,
+  guess,
 }: HandCardViewProps) {
   const cardStyle = {
     opacity: card.played ? 0.25 : 1,
@@ -350,6 +495,7 @@ function HandCardView({
         item={card.item}
         tier={card.tier}
         revealed={false}
+        guess={guess}
         heightBound
         variant="dark"
       />

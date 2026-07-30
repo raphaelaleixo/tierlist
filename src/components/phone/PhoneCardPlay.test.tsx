@@ -77,3 +77,49 @@ describe('PhoneCardPlay selection', () => {
     expect(card).toHaveAttribute('aria-pressed', 'false');
   });
 });
+
+describe('PhoneCardPlay tier guesses', () => {
+  it('cannot guess until a card is selected', () => {
+    renderHand(cardPlayState());
+    expect(screen.getByRole('button', { name: /guess tier/i })).toBeDisabled();
+  });
+
+  it('records a guess and shows it on the card with a "?" suffix', async () => {
+    const user = userEvent.setup();
+    renderHand(cardPlayState());
+
+    await user.click(screen.getAllByRole('button', { pressed: false })[0]);
+    await user.click(screen.getByRole('button', { name: /guess tier/i }));
+    await user.click(screen.getByRole('button', { name: 'A' }));
+
+    expect(screen.getByText('A?')).toBeInTheDocument();
+  });
+
+  it('clears a guess', async () => {
+    const user = userEvent.setup();
+    renderHand(cardPlayState());
+
+    await user.click(screen.getAllByRole('button', { pressed: false })[0]);
+    await user.click(screen.getByRole('button', { name: /guess tier/i }));
+    await user.click(screen.getByRole('button', { name: 'A' }));
+    expect(screen.getByText('A?')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /guess tier/i }));
+    await user.click(screen.getByRole('button', { name: /clear/i }));
+    expect(screen.queryByText('A?')).not.toBeInTheDocument();
+  });
+
+  it('drops a guess when its card leaves the hand', async () => {
+    const user = userEvent.setup();
+    const { rerender } = renderHand(cardPlayState());
+
+    await user.click(screen.getAllByRole('button', { pressed: false })[0]);
+    await user.click(screen.getByRole('button', { name: /guess tier/i }));
+    await user.click(screen.getByRole('button', { name: 'A' }));
+    expect(screen.getByText('A?')).toBeInTheDocument();
+
+    // A fresh deal produces new card ids, so every existing guess is stale.
+    rerender(<PhoneCardPlay roomId="R" gameState={cardPlayState()} myId={1} meta={META} />);
+    expect(screen.queryByText('A?')).not.toBeInTheDocument();
+  });
+});
