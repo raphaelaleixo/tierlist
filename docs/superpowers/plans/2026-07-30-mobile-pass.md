@@ -786,23 +786,32 @@ Add `guess,` to `HandCardView`'s destructured parameters, and pass it through to
 
 `TierCard` already ignores `guess` when `revealed` is true, and the hand always passes `revealed={false}`.
 
-- [ ] **Step 6: Add the chip colours**
+- [ ] **Step 6: Move the tier palette to the theme**
 
-`TIER_COLORS` in `src/components/TierCard.tsx` is module-private and must stay that way — exporting it to share with one consumer couples the card's palette to the hand. Add a local constant near `CARD_WIDTH` (around `:42`) in `PhoneCardPlay.tsx`:
+The picker chips need the tier colours, which currently live as a module-private `TIER_COLORS` inside `src/components/TierCard.tsx:17-24`. Do **not** duplicate them — six hex values in two places drift silently the first time anyone retunes the palette.
 
-```tsx
-// Mirrors TIER_COLORS in TierCard.tsx. Duplicated rather than exported: these
-// are picker chips, not cards, and a shared export would make the card's
-// palette a public API for one caller.
-const TIER_CHIP_COLORS: Record<Tier, string> = {
-  S: '#ef3a3a',
-  A: '#ff8c1c',
-  B: '#ffce1c',
-  C: '#3aaf4d',
-  D: '#3a7aef',
-  F: '#9a3aef',
+`src/theme/theme.ts` is where this codebase keeps palettes (`PLAYER_COLOR_HEX` at `:6`), so that is the right home now there are two consumers.
+
+In `src/theme/theme.ts`, add next to `PLAYER_COLOR_HEX`:
+
+```ts
+export const TIER_COLORS: Record<Tier, string> = {
+  S: "#ef3a3a",
+  A: "#ff8c1c",
+  B: "#ffce1c",
+  C: "#3aaf4d",
+  D: "#3a7aef",
+  F: "#9a3aef",
 };
 ```
+
+Add `Tier` to that file's type import from `../game/types` (it already imports `PlayerColor` from there).
+
+Then in `src/components/TierCard.tsx`, delete the local `TIER_COLORS` declaration (`:17-24`) and import it instead — the file already imports `PLAYER_COLOR_HEX` from the theme, so extend that existing import rather than adding a second one.
+
+In `src/components/phone/PhoneCardPlay.tsx`, import it the same way. Use `TIER_COLORS` directly in the picker chips; there is no separate chip constant.
+
+Values are unchanged, so nothing should look different. `npm run build` at Step 9 will catch any missed import.
 
 - [ ] **Step 7: Build the two-button row and the inline picker**
 
@@ -850,7 +859,7 @@ Replace the entire CTA `<Container>` block (`:307-347`) with:
                       color: '#fff',
                       bgcolor:
                         guesses[selectedCard.id] === t
-                          ? TIER_CHIP_COLORS[t]
+                          ? TIER_COLORS[t]
                           : 'rgba(255,255,255,0.12)',
                       outline:
                         guesses[selectedCard.id] === t
@@ -1019,7 +1028,7 @@ The spec listed four component tests; the plan has seven, because Task 4's ungat
 
 **Placeholder scan.** No TBD/TODO, no "similar to Task N", no "handle edge cases". Every code step carries literal before-and-after text.
 
-**Type consistency.** `SortableCard`→`HandCardView` and `isPlayable`→`isSelectable` are renamed once in Task 3 and used under the new names in Tasks 4 and 5. `guess?: Tier` has the same type on `TierCardProps` (Task 2) and `HandCardViewProps` (Task 5). `HandCardView` deliberately avoids `HandCard`, which is the domain type from `../../game/types`. `TIER_CHIP_COLORS` is defined in Task 5 Step 6 and consumed in Step 7, so an implementer working in order never reads a reference before its definition.
+**Type consistency.** `SortableCard`→`HandCardView` and `isPlayable`→`isSelectable` are renamed once in Task 3 and used under the new names in Tasks 4 and 5. `guess?: Tier` has the same type on `TierCardProps` (Task 2) and `HandCardViewProps` (Task 5). `HandCardView` deliberately avoids `HandCard`, which is the domain type from `../../game/types`. `TIER_COLORS` is defined in Task 5 Step 6 and consumed in Step 7, so an implementer working in order never reads a reference before its definition.
 
 **Known risk.** Task 4's tests select cards via `getAllByRole('button', { pressed: false })`, which will also match any other `aria-pressed="false"` button in the tree. Today there is none — the CTA buttons have no `aria-pressed` — but if that changes, these selectors get brittle. Acceptable now; noted so a future reader knows why they broke.
 
