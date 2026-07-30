@@ -23,15 +23,25 @@ function renderCard(props: Partial<React.ComponentProps<typeof TierCard>> = {}) 
 }
 
 describe('TierCard tier banner', () => {
-  it('shows "?" when unrevealed with no guess', () => {
+  it('shows "?" when unrevealed with no guess, and keeps the banner translated away', () => {
     renderCard();
-    expect(screen.getByText('?')).toBeInTheDocument();
+    const banner = screen.getByText('?');
+    expect(banner).toBeInTheDocument();
+    // The banner sits translated out of view until it has something to say.
+    // Without this assertion the test passes even if no guess renders
+    // off-screen, which is the bug it exists to catch.
+    expect(banner).toHaveStyle({ transform: 'translateY(110%)' });
   });
 
-  it('shows the guessed tier with a "?" suffix when unrevealed', () => {
+  it('shows the guessed tier with a "?" suffix, and brings the banner into view', () => {
     renderCard({ guess: 'A' });
-    expect(screen.getByText('A?')).toBeInTheDocument();
+    const banner = screen.getByText('A?');
+    expect(banner).toBeInTheDocument();
     expect(screen.queryByText('?')).not.toBeInTheDocument();
+    // The banner sits translated out of view until it has something to say.
+    // Without this assertion the test passes even if the guess renders
+    // off-screen, which is the bug it exists to catch.
+    expect(banner).toHaveStyle({ transform: 'none' });
   });
 
   it('shows the real tier once revealed, ignoring any guess', () => {
