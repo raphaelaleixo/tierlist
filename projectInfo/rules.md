@@ -82,7 +82,7 @@ After **2 rounds × 5 tricks = 10 tricks**, the game ends.
 After the final trick, the big screen does an animated walkthrough — for each player, in turn — of:
 
 - Their assigned categories (both rounds).
-- The complete tier list each neighbour wrote for them (`S` through `F`, including the unplayed mystery card).
+- The complete tier list each neighbour wrote — their own favourites, S through F, including the unplayed mystery card.
 
 This is the marquee digital-only moment: "Oh, *THAT* was Alice's F-tier 90s movie?!"
 
@@ -125,7 +125,7 @@ Final score screen with hearts follows.
 
 Public-facing labels (use these in UI strings):
 
-- **Tier list** — the 6-card ranking a player wrote for a neighbour.
+- **Tier list** — a player's own 6-card ranking of their favourites, S down to F. Someone else plays it.
 - **Category** — the prompt ("Animals", "TV shows", etc.).
 - **Hand** — the 6 cards currently held by a player during a round.
 - **Trick** — one round of card play (each player plays one card, lowest tier wins).
