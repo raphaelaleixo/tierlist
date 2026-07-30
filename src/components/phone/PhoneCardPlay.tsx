@@ -178,13 +178,13 @@ export default function PhoneCardPlay({ roomId, gameState, myId, meta }: Props) 
             key={card.id}
             card={card}
             isSelected={card.id === selectedCardId}
-            isSelectable={
-              !card.played && isMyTurn && !trickComplete && !iAlreadyPlayedThisTrick
-            }
+            // Selection is NOT turn-gated: guessing a card's tier is most
+            // useful while you wait for other players. Only the play
+            // action is gated, via `canPlay`.
+            isSelectable={!card.played}
             onTap={() => {
-              if (!card.played && isMyTurn && !trickComplete && !iAlreadyPlayedThisTrick) {
-                setSelectedCardId((id) => (id === card.id ? null : card.id));
-              }
+              if (card.played) return;
+              setSelectedCardId((id) => (id === card.id ? null : card.id));
             }}
             category={myCategory}
             writerName={writer?.name ?? ''}
@@ -236,7 +236,7 @@ export default function PhoneCardPlay({ roomId, gameState, myId, meta }: Props) 
                 textTransform: 'uppercase',
               }}
             >
-              {selectedCard ? 'Play' : isMyTurn ? 'Pick a card' : 'Waiting'}
+              {!isMyTurn ? 'Waiting' : selectedCard ? 'Play' : 'Pick a card'}
             </Box>
           </ShinyButton>
         )}
@@ -326,6 +326,9 @@ function HandCardView({
   return (
     <Box
       onClick={onTap}
+      role="button"
+      aria-pressed={isSelected}
+      aria-disabled={!isSelectable}
       sx={{
         flex: `0 0 ${CARD_WIDTH}px`,
         aspectRatio: '5/7',
