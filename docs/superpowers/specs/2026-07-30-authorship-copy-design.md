@@ -1,7 +1,8 @@
-# Authorship copy — making it clear you rank your OWN favourites
+# Authorship — making it clear whose taste a tier list is, and who plays it
 
 Date: 2026-07-30
-Status: approved, ready for implementation planning
+Status: approved; amended during planning with a bug found in
+`PhoneTierWriting.tsx` (see "Compounding bug" below)
 
 ## Problem
 
@@ -16,6 +17,10 @@ confusions during round 1:
 Both are the same misconception mirrored: that a tier list is *about* the
 player who ends up holding it. It isn't. Every list is its author's own
 favourites; the twist is that someone else plays it blind.
+
+Two independent defects produce that misconception. The copy is one (below).
+The other is an outright bug that named the wrong player on the very screen
+where Paula got stuck — see "Compounding bug".
 
 The confusion is earned, not user error. The copy says both things at once:
 
@@ -35,6 +40,38 @@ what makes the game work with a stranger at the table.
 
 The rejected alternative — rank what you think the *holder* likes — is a
 coherent but different game that requires a table of close friends.
+
+## Compounding bug: the write screen names the wrong player
+
+Found while mapping the fixtures during planning, and verified by tracing a
+real `dealHands` call.
+
+`PhoneTierWriting.tsx:59` computes the player who will play your list as
+`writerOf(seating, myId, passDirection)`. That helper returns the neighbour who
+writes *your hand* — the opposite end of the loop. The player who plays *your
+list* is `assignerOf(seating, myId, passDirection)`, already computed on line 55
+as `assignerId`.
+
+Traced with Paula / Raphael / Tester, round 1:
+
+```
+Paula holds a hand authored by Tester | UI 'willPlay' says Tester | assignerOf = Raphael
+=> Paula's list is played by: Raphael
+=> PhoneTierWriting tells Paula:  Tester
+```
+
+So Paula's screen read "ANIMALS — for **Tester** to play" while she was writing
+in the category **Raphael** assigned her. Two different names attached to one
+list, unreconciled. This is very likely the larger share of the reported
+confusion, and no amount of rewording fixes it.
+
+`willPlayId` is therefore always equal to `assignerId` and the separate
+computation should be deleted rather than corrected in place.
+
+The bug is isolated to this one line. `PhoneCategoryPick.tsx:31`,
+`PhoneCardPlay.tsx:68`, `PlayerCell.tsx:73`, `LiveTierList.tsx:53` and
+`BigScreenEndReveal.tsx:270` all use `writerOf` correctly, for "who authored
+this hand".
 
 ## Root cause: two competing vocabularies
 
@@ -58,10 +95,13 @@ being asked to write. No rewording fixes that; the element has to move.
 
 ## Scope
 
-Copy plus layout on existing screens. No new screens, no new teaching beat
-(a pre-round explainer is a tax on the majority who already understand, and
-party games get skipped through anyway). No game-logic changes — `lifecycle.ts`
-and `rules.ts` are correct as written.
+Copy plus layout on existing screens, plus the one-line `willPlayId` bug fix
+above. No new screens, no new teaching beat (a pre-round explainer is a tax on
+the majority who already understand, and party games get skipped through
+anyway).
+
+`src/game/lifecycle.ts` and `src/game/rules.ts` are correct as written and are
+not modified — the bug is in a component's use of them, not in the helpers.
 
 ## Changes
 
@@ -82,7 +122,11 @@ she can predict Tester in).
 
 ### 2. `src/components/phone/PhoneTierWriting.tsx`
 
-Header stops leading with who plays the list.
+First, the bug: delete the `willPlayId` computation at `:59` and derive the
+"who plays this" name from `assignerId` (`:55`) instead. Covered by a new unit
+test — see Testing.
+
+Then the header stops leading with who plays the list.
 
 Entry view (`HeaderBlock`, `:184-225`):
 
@@ -135,26 +179,40 @@ Add one line under Theme & overview so the ambiguity does not regrow:
 ### 5. Explicitly unchanged
 
 - `PhoneCardPlay.tsx`, `PlayerCell.tsx`, `LiveTierList.tsx`,
-  `BigScreenEndReveal.tsx` — already use possessive framing.
-- `src/game/*` — logic is correct; this is a presentation defect only.
+  `BigScreenEndReveal.tsx` — already use possessive framing and already use
+  `writerOf` correctly.
+- `src/game/lifecycle.ts`, `src/game/rules.ts` — correct as written.
 
 ## Testing
 
 The existing suites (`rules.test.ts`, `lifecycle.test.ts`,
 `deserialize.test.ts`) cover logic that is not changing; they must still pass.
 
-No new unit tests — asserting on display strings is brittle and would lock in
-wording we may still tune. Verification is by eye through the existing mock
-pages (`MockPlayerPhone`, `MockBigScreen`), which can reach every affected
-screen without a live room:
+**One new unit test**, in `src/game/lifecycle.test.ts`: pin the invariant that
+the player dealt my `tierListWritten` is `assignerOf(me)` and not `writerOf(me)`,
+in both pass directions. This is the invariant the UI bug violated. It belongs
+in the game suite rather than a component test because it is a statement about
+the deal, not about rendering.
 
-1. `MockPlayerPhone` category-pick state — new subline and helper line.
-2. `MockPlayerPhone` tier-writing state — new header, footnote placement.
-3. `MockPlayerPhone` tier-writing locked state — memory prompt.
-4. `/how-to-play` — all six body edits and both glossary edits.
+**No tests on display strings.** Asserting on copy is brittle and would lock in
+wording that may still get tuned after the next playtest. Those changes are
+verified by eye through the mock pages (`MockPlayerPhone`, `MockBigScreen`),
+which reach every affected screen without a live room. Mock roster is
+Alice(1) / Bob(2) / Carol(3) / Dan(4), seating `[1,2,3,4]`, round 1 passing
+left — so for Alice: she picks for Dan, writes in Bob's category, and **Bob**
+plays her list.
 
-Success criterion: reading only the phone screens, with no prior explanation,
-a new player can answer "whose favourites am I ranking?" correctly.
+1. `/mock/phone` → `Cat-pick · 2 in`, seat 3 or 4 — new subline and helper line.
+2. `/mock/phone` → `Cat-pick · 2 in`, seat 1 — locked-view subline.
+3. `/mock/phone` → `Tier-writing · fresh`, seat 1 — new header, footnote
+   placement, and the corrected name (must read **Bob**, not Dan).
+4. `/mock/phone` → `Tier-writing · locked` (new fixture, added in Task 2) —
+   memory prompt.
+5. `/how-to-play` — all six body edits and both glossary edits.
+
+Success criterion: reading only the phone screens, with no prior explanation, a
+new player can answer "whose favourites am I ranking?" and "who plays my list?"
+correctly.
 
 ## Open questions
 
