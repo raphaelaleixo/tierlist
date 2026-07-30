@@ -109,11 +109,7 @@ export default function PhoneTierWriting({ roomId, gameState, myId, meta }: Prop
     >
       <Container maxWidth="xs" sx={{ py: 3 }}>
         <Stack spacing={2}>
-          <HeaderBlock
-            category={myCategory}
-            willPlayName={willPlayName}
-            willPlayColor={willPlayColor}
-          />
+          <HeaderBlock category={myCategory} myColor={myColor} variant="entry" />
 
           {/* Tier rows */}
           <Stack spacing={1}>
@@ -151,6 +147,12 @@ export default function PhoneTierWriting({ roomId, gameState, myId, meta }: Prop
             ))}
           </Stack>
 
+          <PlaysThisNote
+            willPlayName={willPlayName}
+            willPlayColor={willPlayColor}
+            variant="entry"
+          />
+
           {/* Lock-in button */}
           <ShinyButton
             accent={myColor}
@@ -181,12 +183,12 @@ export default function PhoneTierWriting({ roomId, gameState, myId, meta }: Prop
 
 function HeaderBlock({
   category,
-  willPlayName,
-  willPlayColor,
+  myColor,
+  variant,
 }: {
   category: CategoryChoice | null;
-  willPlayName: string;
-  willPlayColor: string;
+  myColor: string;
+  variant: 'entry' | 'locked';
 }) {
   return (
     <Box sx={{ textAlign: 'center' }}>
@@ -195,6 +197,10 @@ function HeaderBlock({
           <OpenMojiIcon emoji={category.emoji} variant="black" invert size="4rem" />
         </Box>
       )}
+      {/* Ownership leads. "YOUR" in the player's own colour is the whole
+          point of the screen: these are your favourites, not a guess at
+          anyone else's. Who plays the list is demoted to a footnote near
+          the submit button. */}
       <Box
         sx={{
           fontFamily: CARD_FONT,
@@ -205,6 +211,7 @@ function HeaderBlock({
           color: '#fff',
         }}
       >
+        <Box component="span" sx={{ color: myColor }}>Your </Box>
         {category?.name ?? '—'}
       </Box>
       <Box
@@ -218,8 +225,49 @@ function HeaderBlock({
           textTransform: 'uppercase',
         }}
       >
-        for <PlayerNameChip name={willPlayName} colorHex={willPlayColor} /> to play.
+        {variant === 'entry'
+          ? 'Rank your own favourites, S to F.'
+          : 'Your favourites, locked in.'}
       </Box>
+    </Box>
+  );
+}
+
+// The "who plays this" line. Deliberately placed next to the submit button
+// rather than in the header: read as a consequence after you understand the
+// task, it's flavour; read before it, it reframes the task as "write this
+// FOR them", which is the misreading we're fixing.
+function PlaysThisNote({
+  willPlayName,
+  willPlayColor,
+  variant,
+}: {
+  willPlayName: string;
+  willPlayColor: string;
+  variant: 'entry' | 'locked';
+}) {
+  return (
+    <Box
+      sx={{
+        textAlign: 'center',
+        fontFamily: CARD_FONT,
+        fontWeight: 600,
+        fontSize: '0.85rem',
+        color: 'rgba(255,255,255,0.7)',
+        lineHeight: 1.4,
+        textTransform: 'uppercase',
+      }}
+    >
+      {variant === 'entry' ? (
+        <>
+          <PlayerNameChip name={willPlayName} colorHex={willPlayColor} /> plays these
+          — they won&rsquo;t know your order.
+        </>
+      ) : (
+        <>
+          Memorise it — you&rsquo;re the only one who knows this order.
+        </>
+      )}
     </Box>
   );
 }
@@ -288,41 +336,13 @@ function LockedView({
                 letterSpacing: 2,
                 textTransform: 'uppercase',
                 color: myColor,
+                mb: 1.5,
               }}
             >
               Locked in
             </Box>
-            {category && (
-              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1.5, mb: 1.5 }}>
-                <OpenMojiIcon emoji={category.emoji} variant="black" invert size="4rem" />
-              </Box>
-            )}
-            <Box
-              sx={{
-                fontFamily: CARD_FONT,
-                fontWeight: 900,
-                fontSize: '2.2rem',
-                lineHeight: 1,
-                textTransform: 'uppercase',
-                color: '#fff',
-              }}
-            >
-              {category?.name ?? '—'}
-            </Box>
-            <Box
-              sx={{
-                mt: 1.5,
-                fontFamily: CARD_FONT,
-                fontWeight: 600,
-                fontSize: '0.95rem',
-                color: 'rgba(255,255,255,0.85)',
-                lineHeight: 1.3,
-                textTransform: 'uppercase',
-              }}
-            >
-              for <PlayerNameChip name={willPlayName} colorHex={willPlayColor} /> to play.
-            </Box>
           </Box>
+          <HeaderBlock category={category} myColor={myColor} variant="locked" />
 
           {/* Recap rows — same shape as the entry rows, but read-only. */}
           <Stack spacing={1}>
@@ -351,6 +371,12 @@ function LockedView({
               </Box>
             ))}
           </Stack>
+
+          <PlaysThisNote
+            willPlayName={willPlayName}
+            willPlayColor={willPlayColor}
+            variant="locked"
+          />
 
           <Box
             sx={{

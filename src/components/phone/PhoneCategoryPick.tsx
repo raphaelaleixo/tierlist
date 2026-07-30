@@ -94,7 +94,7 @@ export default function PhoneCategoryPick({ roomId, gameState, myId, meta }: Pro
                   textTransform: 'uppercase',
                 }}
               >
-                for <PlayerNameChip name={recipientName} colorHex={recipientColor} /> to tier.
+                for <PlayerNameChip name={recipientName} colorHex={recipientColor} />&rsquo;s favourites.
               </Box>
             </Box>
 
@@ -200,7 +200,7 @@ export default function PhoneCategoryPick({ roomId, gameState, myId, meta }: Pro
                 textTransform: 'uppercase',
               }}
             >
-              for <PlayerNameChip name={recipientName} colorHex={recipientColor} /> to tier.
+              for <PlayerNameChip name={recipientName} colorHex={recipientColor} />&rsquo;s favourites.
             </Box>
           </Box>
 
@@ -256,6 +256,25 @@ export default function PhoneCategoryPick({ roomId, gameState, myId, meta }: Pro
                 },
               }}
             />
+          </Box>
+
+          {/* Carries three facts in one line: the category is for THEIR own
+              favourites (not a guess at yours), you'll be the one playing
+              their list, and therefore the pick is strategic — you want a
+              category you can read them in. */}
+          <Box
+            sx={{
+              mt: -1.5,
+              textAlign: 'center',
+              fontFamily: CARD_FONT,
+              fontWeight: 600,
+              fontSize: '0.8rem',
+              lineHeight: 1.4,
+              color: 'rgba(255,255,255,0.65)',
+            }}
+          >
+            They&rsquo;ll rank their own — and you play their list, so pick
+            something you can read them on.
           </Box>
           <Popover
             open={pickerOpen}

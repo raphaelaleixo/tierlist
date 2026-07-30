@@ -99,6 +99,7 @@ function fullToEndGame(): GameState {
 type FixtureKey =
   | 'cat-pick-mid'
   | 'tier-writing-fresh'
+  | 'tier-writing-locked'
   | 'card-play-pending'
   | 'card-play-resolved-upset'
   | 'end-reveal';
@@ -122,6 +123,23 @@ const FIXTURES: Record<FixtureKey, { label: string; build: () => GameState }> = 
       s = submitCategory(s, 3, { name: '90s movies', emoji: '📼' });
       s = submitCategory(s, 4, { name: 'Snacks', emoji: '🍿' });
       return startTierWriting(s);
+    },
+  },
+  'tier-writing-locked': {
+    label: 'Tier-writing · locked',
+    build: () => {
+      let s = createInitialGameState(SEATING, 1);
+      s = submitCategory(s, 1, { name: 'Animals', emoji: '🐾' });
+      s = submitCategory(s, 2, { name: 'TV shows', emoji: '📺' });
+      s = submitCategory(s, 3, { name: '90s movies', emoji: '📼' });
+      s = submitCategory(s, 4, { name: 'Snacks', emoji: '🍿' });
+      s = startTierWriting(s);
+      // Only seat 1 has submitted, so seat 1 shows the locked recap while
+      // seats 2-4 still show the entry form.
+      return submitTierList(s, 1, {
+        S: 'Friends', A: 'The Wire', B: 'Lost',
+        C: 'Heroes', D: 'Glee', F: 'Riverdale',
+      });
     },
   },
   'card-play-pending': {
