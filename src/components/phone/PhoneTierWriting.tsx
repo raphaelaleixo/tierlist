@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Box, Container, Stack, TextField } from '@mui/material';
 import type { CategoryChoice, GameState, Tier, TierList } from '../../game/types';
 import { TIERS } from '../../game/types';
-import { assignerOf, writerOf, submitTierList } from '../../game/lifecycle';
+import { assignerOf, submitTierList } from '../../game/lifecycle';
 import { writeGameState } from '../../hooks/useGameState';
 import { pastelOnDark } from '../../utils/blob';
 import OpenMojiIcon from '../OpenMojiIcon';
@@ -51,14 +51,14 @@ export default function PhoneTierWriting({ roomId, gameState, myId, meta }: Prop
   const me = meta[myId];
   const myColor = me?.colorHex ?? '#888';
 
-  // The neighbour who PICKED a category for me — I'm tiering in their category.
+  // The neighbour who PICKED a category for me. I write in their category —
+  // and they are also the player who PLAYS the list I write, because the deal
+  // hands each list back to whoever assigned it. Not writerOf(me): that's the
+  // neighbour who authors MY hand, which is the other end of the loop.
   const assignerId = assignerOf(gameState.seating, myId, round.passDirection);
   const myCategory = round.perPlayer[assignerId]?.categoryAssigned ?? null;
-  // The neighbour who'll PLAY my tier list (the same player who'll receive
-  // my hand at deal time).
-  const willPlayId = writerOf(gameState.seating, myId, round.passDirection);
-  const willPlay = meta[willPlayId];
-  const willPlayName = willPlay?.name ?? `Player ${willPlayId}`;
+  const willPlay = meta[assignerId];
+  const willPlayName = willPlay?.name ?? `Player ${assignerId}`;
   const willPlayColor = willPlay?.colorHex ?? '#888';
 
   const [draft, setDraft] = useState<Record<Tier, string>>(blankList);
