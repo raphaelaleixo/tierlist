@@ -119,8 +119,10 @@ It renders in the same banner slot as the real tier, suffixed with `?` —
 1. **`src/components/TierCard.tsx`** — add an optional `guess?: Tier` prop.
    Precedence in the bottom banner (`:324`) and the accent colour (`:94`):
    - `revealed` → real tier, full `TIER_COLORS[tier]`
-   - else `guess` set → `` `${guess}?` ``, `TIER_COLORS[guess]` muted (reduced
-     opacity or desaturated) so a guess never reads as fact
+   - else `guess` set → `` `${guess}?` ``, `TIER_COLORS[guess]` at 55% opacity
+     so a guess never reads as fact. Opacity rather than desaturation, because
+     desaturating the tier palette collapses adjacent tiers toward the same
+     grey and the letter would end up carrying all the signal.
    - else → `?`, existing grey `#9a9a9a`
 
    The banner already renders `{revealed ? tier : "?"}`, so this is one
@@ -153,12 +155,25 @@ It renders in the same banner slot as the real tier, suffixed with `?` —
      When the trick is resolved the primary becomes the shared `Continue`, as
      today. `Guess tier` stays available then too.
 
-3. **The picker.** Tapping `Guess tier` opens a picker for the selected card:
-   six tier chips `S A B C D F`, plus **Clear**. If the card already has a
-   guess, that chip shows as selected — guesses are revisable, which is the
-   whole point. Header copy states it is a guess (e.g. "What do you reckon?").
-   Implement as a MUI `Dialog`/bottom sheet consistent with existing phone
-   modals.
+3. **The picker — inline, not a modal.** Tapping `Guess tier` reveals a row of
+   six tier chips `S A B C D F` directly above the button row, with a small
+   **Clear** action. Tapping a chip sets the guess and collapses the row;
+   tapping `Guess tier` again collapses it without changing anything. If the
+   card already has a guess, that chip renders selected — guesses are
+   revisable, which is the whole point.
+
+   Inline rather than a `Dialog` for two reasons: a modal would cover the card
+   whose item you are reading in order to decide, and the phone views have no
+   existing Dialog idiom to match (`PhoneCategoryPick.tsx:279` uses a
+   `Popover`, but only because the emoji picker is a large third-party grid).
+   Inline also avoids a focus trap and a dismiss gesture for what is a
+   six-option choice.
+
+   The chips carry the disclaimer: a short label on the row reading
+   `Your guess — only you see this`. Six chips plus Clear across a 375px
+   screen leaves roughly 44px per target, which meets the minimum touch size;
+   if it proves tight, Clear moves to a text link beneath the row rather than
+   shrinking the chips.
 
 ### Explicitly unchanged
 
