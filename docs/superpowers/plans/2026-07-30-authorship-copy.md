@@ -687,3 +687,69 @@ doesn't regrow."
 **Build-red window.** Task 2 Steps 1-4 are a single refactor split across four edits; the file does not compile between Step 1 and Step 3. This is flagged inline in Step 1. Run the build only at Step 8. All other tasks leave the tree green at every step.
 
 **Verification honesty.** Tasks 2 and 3 are verified by eye, not by assertion — that is the spec's deliberate choice, so a green `npm test` after those tasks proves only that nothing regressed, not that the copy is right. The visual checklists in Step 9 (Task 2) and Step 9 (Task 3) are the actual acceptance gate and must genuinely be performed.
+
+---
+
+### Task 4: Correct the homepage tagline
+
+Added mid-flight. The Task 3 implementer found `src/locales/en.json` driving the homepage hero with copy that states the opposite model. The spec never listed this file; the human ruled to fix both lines (option A of four presented, 2026-07-30).
+
+`src/locales/en.json` is the only locale file, and these two strings are its only model-contradicting content (verified by grep for taste/favourite/neighbour/rank/tier).
+
+**Files:**
+- Modify: `src/locales/en.json:3-4`
+
+**Interfaces:**
+- Consumes: nothing from Tasks 1-3.
+- Produces: nothing. `HomePage.tsx:91-93` reads these keys via `t('home.taglineLead')` and `t('home.taglineDetail')`; the keys do not change, only their values.
+
+- [ ] **Step 1: Replace both tagline strings**
+
+In `src/locales/en.json`, change lines 3-4 from:
+
+```json
+    "taglineLead": "Rate your friends' taste.",
+    "taglineDetail": "Rank each other’s favourites S-tier to trash. In secret.",
+```
+
+to:
+
+```json
+    "taglineLead": "Your taste, in someone else’s hands.",
+    "taglineDetail": "Rank your own favourites S-tier to trash. Someone else plays them.",
+```
+
+Note the curly apostrophe (`’`, U+2019) in `someone else’s` — it matches the typographic style already used in `taglineDetail` and elsewhere in this file. Do not substitute an ASCII `'`.
+
+`taglineLead` deliberately matches the `HowToPlayPage.tsx` hero ("Your taste, in someone else's hands") so home and how-to-play speak with one voice.
+
+- [ ] **Step 2: Confirm the JSON still parses**
+
+Run: `node -e "JSON.parse(require('fs').readFileSync('src/locales/en.json','utf8')); console.log('valid JSON')"`
+Expected: `valid JSON`
+
+- [ ] **Step 3: Verify**
+
+Run: `npm test && npm run lint && npm run build`
+Expected: all PASS.
+
+- [ ] **Step 4: Verify visually**
+
+Run `npm run dev` and open `/`. The hero should read "Your taste, in someone else’s hands." above "Rank your own favourites S-tier to trash. Someone else plays them." Confirm neither line clips or overflows at 375px width.
+
+If you cannot drive a browser, mark this NOT PERFORMED — do not claim it passed.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/locales/en.json
+git commit -m "Correct homepage tagline to the own-taste model
+
+The hero read 'Rate your friends' taste' over 'Rank each other's
+favourites' — both stating the opposite of how the game works, on the
+most-read screen in the app. taglineLead was also the exact sentence
+removed from HowToPlayPage for having misled a playtester.
+
+taglineLead now matches the how-to-play hero so the two surfaces speak
+with one voice."
+```
