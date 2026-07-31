@@ -9,20 +9,10 @@ import OpenMojiIcon from '../OpenMojiIcon';
 import ShinyButton from '../ShinyButton';
 import PlayerNameChip from '../PlayerNameChip';
 import type { PlayerMeta } from '../big-screen/playerMeta';
+import { TIER_COLORS } from '../../theme/theme';
 
 const CARD_FONT =
   '"Bricolage Grotesque", -apple-system, "Helvetica Neue", "Segoe UI", system-ui, sans-serif';
-
-// Same tier-letter palette used on the big screen, so the badges read
-// identically across surfaces.
-const TIER_COLORS: Record<Tier, string> = {
-  S: '#ef3a3a',
-  A: '#ff8c1c',
-  B: '#ffce1c',
-  C: '#3aaf4d',
-  D: '#3a7aef',
-  F: '#9a3aef',
-};
 
 // Vibey placeholders so each row reads as a flavour cue for what belongs
 // in that tier.

@@ -52,6 +52,18 @@ export default function PhoneCategoryPick({ roomId, gameState, myId, meta }: Pro
     () => (openMojiSet ? unsupportedEmojiIds(openMojiSet) : []),
     [openMojiSet],
   );
+  // MUI repositions a Popover on window scroll only. The phase body is now a
+  // scrollable container of its own (it wasn't before the layout rework), so
+  // scrolling it while the picker is open detaches the popover from its
+  // anchor and leaves it floating. A detached popover is worse than a
+  // dismissed one, so close it as soon as any ancestor scroll container
+  // scrolls. Capture phase is required: the scroll event doesn't bubble.
+  useEffect(() => {
+    if (!pickerOpen) return;
+    const onScroll = () => setPickerOpen(false);
+    document.addEventListener('scroll', onScroll, { passive: true, capture: true });
+    return () => document.removeEventListener('scroll', onScroll, { capture: true });
+  }, [pickerOpen]);
   // Each round's `categorySuggestions` is a shuffled pool persisted on the
   // game state when the round is created. Each player slices their own
   // 3-item window, so no two players ever see the same suggestion.

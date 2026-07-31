@@ -35,8 +35,6 @@ interface Props {
 export default function PhoneCardPlay({ roomId, gameState, myId, meta }: Props) {
   const round = gameState.rounds[gameState.currentRoundIndex]!;
   const rawHand = round.perPlayer[myId]?.hand;
-  // Stabilised so the guess-cleanup effect below (keyed on myHand) doesn't
-  // re-run every render off a fresh `?? []` fallback array.
   const myHand = useMemo(() => rawHand ?? [], [rawHand]);
   const myCategory = round.perPlayer[myId]?.categoryAssigned ?? null;
   const me = meta[myId];
@@ -66,18 +64,6 @@ export default function PhoneCardPlay({ roomId, gameState, myId, meta }: Props) 
   const [guesses, setGuesses] = useState<Record<string, Tier>>({});
   const [pickerOpen, setPickerOpen] = useState(false);
 
-  // Drop guesses whose card is no longer in hand (a new round deals new ids).
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setGuesses((prev) => {
-      const handIds = new Set(myHand.map((c) => c.id));
-      const kept = Object.entries(prev).filter(([id]) => handIds.has(id));
-      return kept.length === Object.keys(prev).length
-        ? prev
-        : (Object.fromEntries(kept) as Record<string, Tier>);
-    });
-  }, [myHand]);
-
   // A picker left open across a selection change would apply to the wrong card.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -94,6 +80,15 @@ export default function PhoneCardPlay({ roomId, gameState, myId, meta }: Props) 
     try {
       await writeGameState(roomId, playCard(gameState, myId, selectedCard.id));
       setSelectedCardId(null);
+      // A guess dies with its card: once played, the tier is about to be
+      // revealed publicly, so a stale (possibly wrong) private guess sitting
+      // next to it would be misleading rather than useful.
+      setGuesses((prev) => {
+        if (!(selectedCard.id in prev)) return prev;
+        const next = { ...prev };
+        delete next[selectedCard.id];
+        return next;
+      });
     } finally {
       setSubmitting(false);
     }
@@ -474,6 +469,13 @@ function HandCardView({
       role="button"
       aria-pressed={isSelected}
       aria-disabled={!isSelectable}
+      tabIndex={isSelectable ? 0 : -1}
+      onKeyDown={(e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onTap();
+        }
+      }}
       sx={{
         flex: `0 0 ${CARD_WIDTH}px`,
         aspectRatio: '5/7',

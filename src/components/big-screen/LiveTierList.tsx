@@ -4,18 +4,10 @@ import { TIERS } from '../../game/types';
 import { writerOf } from '../../game/lifecycle';
 import TierCard from '../TierCard';
 import type { PlayerMeta } from './playerMeta';
+import { TIER_COLORS } from '../../theme/theme';
 
 // Right column on the big screen. As cards are revealed each trick, items slot
 // into their tier row as full TierCards (height-bound, dark variant).
-
-const TIER_COLORS: Record<Tier, string> = {
-  S: '#ef3a3a',
-  A: '#ff8c1c',
-  B: '#ffce1c',
-  C: '#3aaf4d',
-  D: '#3a7aef',
-  F: '#9a3aef',
-};
 
 const CARD_FONT =
   '"Bricolage Grotesque", -apple-system, "Helvetica Neue", "Segoe UI", system-ui, sans-serif';

@@ -7,6 +7,7 @@ import OpenMojiIcon from '../OpenMojiIcon';
 import PhaseIntroBanner from './PhaseIntroBanner';
 import { CELL_EXIT_DURATION_MS, CELL_STAGGER_MS, PhaseExitContext } from './phaseTransition';
 import type { PlayerMeta } from './playerMeta';
+import { TIER_COLORS } from '../../theme/theme';
 
 // Shown SECOND in the end-game flow: every tier list for every player across
 // both rounds, with the mystery (unplayed) card highlighted. Layout is one
@@ -16,15 +17,6 @@ import type { PlayerMeta } from './playerMeta';
 
 const CARD_FONT =
   '"Bricolage Grotesque", -apple-system, "Helvetica Neue", "Segoe UI", system-ui, sans-serif';
-
-const TIER_COLORS: Record<Tier, string> = {
-  S: '#ef3a3a',
-  A: '#ff8c1c',
-  B: '#ffce1c',
-  C: '#3aaf4d',
-  D: '#3a7aef',
-  F: '#9a3aef',
-};
 
 // Match the in-game row geometry exactly: cells are always 1/6 of the row
 // width and the row is centred, so with fewer than 6 players the cells stay

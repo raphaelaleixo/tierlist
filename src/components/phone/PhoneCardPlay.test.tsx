@@ -109,17 +109,20 @@ describe('PhoneCardPlay tier guesses', () => {
     expect(screen.queryByText('A?')).not.toBeInTheDocument();
   });
 
-  it('drops a guess when its card leaves the hand', async () => {
+  it('drops a guess when its card is played', async () => {
     const user = userEvent.setup();
-    const { rerender } = renderHand(cardPlayState());
+    // firstPlayerId: 1 makes it Alice's (myId 1) turn, so the Play CTA is
+    // actually enabled.
+    renderHand(cardPlayState(1));
 
     await user.click(screen.getAllByRole('button', { pressed: false })[0]);
     await user.click(screen.getByRole('button', { name: /guess tier/i }));
     await user.click(screen.getByRole('button', { name: 'A' }));
     expect(screen.getByText('A?')).toBeInTheDocument();
 
-    // A fresh deal produces new card ids, so every existing guess is stale.
-    rerender(<PhoneCardPlay roomId="R" gameState={cardPlayState()} myId={1} meta={META} />);
+    // writeGameState is mocked, so the fixture's gameState never changes —
+    // but the guess drop is local state, so the badge disappears regardless.
+    await user.click(screen.getByRole('button', { name: /^play$/i }));
     expect(screen.queryByText('A?')).not.toBeInTheDocument();
   });
 });
